@@ -137,11 +137,13 @@ parser.add_argument('--cases', type=int, default=1000,
 parser.add_argument('--local-weight', dest='local_weight', type=float, default=0.03,
                     help='Weight on the tau(current -> candidate) step cost used '
                          'by the local-step and horizon+local planners.')
-parser.add_argument('--models', default='metric',
+parser.add_argument('--models', default='shape_metric',
                     help='Model package under models/ holding the network the '
-                         'checkpoint was trained with, e.g. metric (default) or '
-                         'metric_june03. The June-3 packages are a different '
-                         'architecture, so their checkpoints only load there.')
+                         'checkpoint was trained with: shape_metric (default), '
+                         'lie_metric, metric_baseline, lie_metric_6s or metric_lie_rhombus. metric_baseline '
+                         '(and lie_metric_6s, which shares its network) is a '
+                         'different (single-route) network, so its checkpoints '
+                         'only load there.')
 parser.add_argument('--modelPath', default='./Experiments/3dshape',
                     help='Experiment root searched for latest.pt (or the newest '
                          '*/Model_Epoch_*.pt) when --checkpoint is not given.')

@@ -59,7 +59,27 @@ Each task package is a near-copy of the same three files:
 
 - `models/metric_2dshape/` — the 2-D shape pipeline (`train/train_2dshape.py`, `evaluate_training.py`,
   `evaluate_training_batched.py`).
-- `models/metric/` — 3-D shape, maze, gibson, and all the ad-hoc probe/diagnostic scripts.
+- `models/shape_metric/` — 3-D shape (default for every trainer/eval script), maze, gibson.
+  Blocked Eikonal loss: translation and rotation blocks each satisfy `S_block |grad_block tau| = 1`.
+- `models/lie_metric/` — same network/trainer as `shape_metric`; loss is the block-anisotropic
+  Eikonal `sqrt(S_dist^2 |grad_v tau|^2 + S_angle^2 |grad_w tau|^2) = 1`, with the rotation block
+  taken as the body-frame Lie gradient (`lie_rot_grad`, see `anisotropic_speed_field_implementation.pdf`).
+- `models/metric_baseline/` — the original metric NTFields (single-route network, isotropic Eikonal
+  on the combined `speed.npy`), copied from `ntrlshape/.../baselines/ntrl-demo/models/metric` with the
+  TD and normal losses switched off. Select a package with `--models` on `train/train_3dshape.py`
+  and `evaluate_training_3d_batched.py`.
+- `models/lie_metric_6s/` — `metric_baseline`'s network and trainer with six independent speeds:
+  `sqrt(g^T diag(S_x^2, S_y^2, S_z^2, S_r1^2, S_r2^2, S_r3^2) g) = 1` per endpoint, where
+  `g = (dtau/dp [world], lie_rot_grad [body])`, mapped as `1e-2*(sqrt(N)-1)^2`. Needs `speeds_6.npy`
+  from `dataprocessing/preprocess_obj_6s.py`: exact free travel along each world axis and free rotation
+  about each body axis against the env point cloud (min over +/-), normalized like
+  `speed_dists` / `speed_angles`. That script takes every `preprocess_obj.py` flag, or
+  `--from_dataset <dir>` to reuse an existing dataset's pairs.
+- `models/metric_lie_rhombus/` — `lie_metric` with an additive block time cost
+  `dt = da/S_dist + db/S_angle` (da = translation step length, db = rotation step angle; a rhombus
+  instead of the ellipse `sqrt(da^2/S_dist^2 + db^2/S_angle^2)`). Its Eikonal equation is the dual
+  norm `max(S_dist |grad_v tau|, S_angle |grad_w tau|) = 1`, mapped `1e-2*(sqrt(N)-1)^2`.
+  `--dual-p` replaces the max with a p-norm (`p = 2` is `lie_metric`).
 - `models/metric_arm/` — the UR5.
 
 **Changes to the core algorithm usually need to be mirrored across all three packages.**
@@ -124,6 +144,40 @@ W&B is **on by default**. Shared helpers in `train/wandb_utils.py` (`add_wandb_a
 `apply_overrides`, `start_run`, `finish_run`) are wired into the trainers; per-epoch `wandb.log`
 calls in `model_train_metric.py` are guarded so they no-op without a run. Disable with `--no-wandb`.
 Common overrides: `--epochs`, `--batch-size`, `--lr`, `--data`, `--set KEY=VALUE`.
+
+## Experiment tree (`research_tree/`): keep it current
+
+`research_tree/tree.yaml` records every model variant tried, including failures. It is a flat
+list of nodes linked by `parent`, with one root per package in `models/` (`metric_baseline`,
+`shape_metric`, `lie_metric`, `lie_metric_6s`, `metric_lie_rhombus`). `python research_tree/render.py` validates it
+and rebuilds `research_tree/tree.html`, a self-contained page with a diagram, an outline, and a
+details panel for each node. The field list and status meanings are in the header comment of
+`tree.yaml`.
+
+- **Session start:** before proposing or running a model change, read the tree with
+  `python research_tree/render.py --text` (add `--root <id>` for one subtree). This avoids
+  repeating dead ends; RNL on `lie_metric`, for example, failed at every setting.
+- **Update it in the same session, without being asked,** whenever:
+  - you create or propose a variant (loss, residual, weighting, architecture, speeds,
+    preprocessing that feeds a model, or a hyperparameter sweep). Add a node with status
+    `running` if training started, or `idea` if it is only proposed.
+  - a training or evaluation run finishes. Fill in `fwd` / `coll` / `result` and set the status
+    to `win`, `mixed` or `fail`.
+  - an analysis changes how an existing result should be read. Edit that node's `notes`.
+  - a run is abandoned. Set it to `dropped` and say why in `result`.
+
+  Then run `python research_tree/render.py`, fix any validation errors, and mention the tree
+  change in your reply.
+- **Rules:**
+  - Never delete a node; mark it `fail` or `dropped` instead.
+  - `parent` is the variant this run actually changed, ideally one change per node. A new
+    package under `models/` gets a new root.
+  - `fwd` is only the headline metric defined in `meta.metric`: Tshape3d_env1, standard 1k set,
+    forward-MPPI success %. Read it from the `regular/forward` line of
+    `results/output_3d/<run>/success_rate.txt`. Put other seeds, sets, envs and eval scripts in
+    `result`, and say there when a number comes from a different evaluation.
+  - Fill `runs` (the `Experiments/` run folder and the `results/` output) and `code` (the files
+    that implement the change), so every node points back to its artifacts.
 
 ## Conventions
 

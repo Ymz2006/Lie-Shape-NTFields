@@ -54,7 +54,7 @@ import viser
 import plotly.graph_objects as go
 
 
-from models.metric import model_train_metric as md
+from models.shape_metric import model_train_metric as md
 from dataprocessing.preprocess_obj import (
     load_obj, _rotvec_to_matrix_np, sample_surface_points)
 

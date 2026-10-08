@@ -1,0 +1,547 @@
+# Experiment tree: every model variant tried, as one node per variant.
+#
+# Edit this file, then run `python research_tree/render.py` to validate it and
+# rebuild research_tree/tree.html (`--text` prints the tree in the terminal).
+#
+# Nodes form a FLAT list; the tree comes from `parent`. To add a variant, append
+# a node at the end (or anywhere; siblings are drawn in file order) whose
+# `parent` is the id of the variant it was derived from.
+#
+# Fields (only id, title, status are required):
+#   id       unique slug. Convention: <package>.<short-name>[.<short-name>...]
+#   parent   id of the node this variant changes. Omit for a root (one root per
+#            model package under models/).
+#   title    short name shown on the card.
+#   status   ref     reference / starting configuration
+#            win     improvement worth keeping
+#            mixed   no clear change, or helps some sets and hurts others
+#            fail    worse than its parent / dead end
+#            running training or evaluation in progress
+#            idea    proposed, not run yet
+#            dropped abandoned or never finished; no result
+#   date     YYYY-MM-DD the run (or idea) started.
+#   change   what differs from the parent, in one or two sentences.
+#   fwd      headline number (see meta.metric). Leave out if not evaluated.
+#   coll     collision % on the same test set.
+#   result   other numbers: seeds, other test sets, other envs, probe variants.
+#   notes    interpretation, hypotheses, caveats (multi-line ok).
+#   runs     list of paths: Experiments/... run folders, results/... outputs.
+#   code     files or packages that implement the variant.
+
+meta:
+  title: Model experiment tree
+  metric: >-
+    fwd = forward-MPPI success % on Tshape3d_env1, standard 1k test set
+    (offset 0.02); coll = collision % on that set. 4000 epochs unless noted.
+  reference: metric_baseline   # its fwd is drawn as a tick on every bar
+
+nodes:
+
+  # ---------------------------------------------------------------- metric_baseline
+  - id: metric_baseline
+    title: metric NTFields baseline (isotropic Eikonal)
+    status: ref
+    date: 2026-10-06
+    change: >-
+      Original metric NTFields: single-route network, isotropic Eikonal on the
+      combined speed.npy, residual 1e-2*(sqrt(S|grad tau|)-1)^2. TD and normal
+      losses switched off.
+    fwd: 77.7
+    coll: 13.0
+    result: >-
+      3 seeds 77.7 ± 1.5 (non-convergence 17.0). Lshape3d_env3 88.0,
+      Ashape3d_env4 87.1 (1 seed each). Farthest-pair set only 33.8: fails
+      mostly by not converging at long range.
+    notes: |
+      tau(start, goal) rank-correlates with realised path cost at only 0.55 on
+      the farthest pairs (lie 0.71), and tau(waypoint, goal) rises along 18% of
+      executed steps there. Poor cost-to-go at long range.
+    runs:
+      - Experiments/3dshape_metric_baseline/Tshape3d_env1_metric_baseline
+      - results/output_3d/Tshape3d_env1_metric_baseline_final
+      - results/compare/summary.md
+    code: [models/metric_baseline/]
+
+  - id: metric_baseline.pretrained
+    parent: metric_baseline
+    title: Pretrained checkpoint
+    status: ref
+    change: pretrained/Tshape3d_env1.pt evaluated as-is.
+    fwd: 84.1
+    result: either-direction 95.7, Alternative Bellman 91.9.
+    runs:
+      - pretrained/Tshape3d_env1.pt
+      - results/output_3d/Tshape3d_env1_baseline_pretrained
+
+  - id: metric_baseline.no_sqrt
+    parent: metric_baseline
+    title: No sqrt in residual
+    status: mixed
+    date: 2026-10-07
+    change: Drop the sqrt from the residual mapping.
+    fwd: 75.3
+    result: 76.3 for the same seed with sqrt (same evaluation).
+    notes: |
+      Removing sqrt barely hurts the isotropic baseline, so the large effect on
+      lie_metric interacts with its higher S_t / S_r targets. Checkpoints were
+      in a session scratchpad, not in the repo.
+
+  # ---------------------------------------------------------------- shape_metric
+  - id: shape_metric
+    title: Blocked Eikonal (two_route)
+    status: ref
+    date: 2026-10-06
+    change: >-
+      Translation and rotation blocks each satisfy their own Eikonal,
+      1e-2*(S_block|grad_block tau| - 1)^2 per block per endpoint, on plain
+      coordinate gradients. two_route network, no normal / TD terms.
+    fwd: 41.5
+    result: Seed 2 also trained (Tshape3d_env1_shape_metric_s2).
+    runs:
+      - Experiments/3dshape_shape_metric/Tshape3d_env1_shape_metric
+      - Experiments/3dshape_shape_metric/Tshape3d_env1_shape_metric_s2
+      - results/output_3d/Tshape3d_env1_shape_metric_final
+    code: [models/shape_metric/]
+
+  - id: shape_metric.early_blockwise
+    parent: shape_metric
+    title: "Early: blockwise, weighted"
+    status: win
+    date: 2026-10-05
+    change: >-
+      Pre-split unified package, eikonal_loss='blockwise': each block residual
+      multiplied by clamp(1/S_block, max=20) when S_block < 0.9.
+    fwd: 69.0
+    result: either-direction 83.8.
+    notes: |
+      Older code (snapshot in the run folder's models/), so other differences
+      from the current shape_metric may exist. Still, +27.5 over the current
+      unweighted shape_metric points at the near-obstacle weight.
+    runs: [Experiments/3dshape/Tshape3d_env1_blockwise]
+
+  - id: shape_metric.early_blockwise.unweighted
+    parent: shape_metric.early_blockwise
+    title: "Early: blockwise, unweighted"
+    status: fail
+    date: 2026-10-06
+    change: Same code without the 1/S_block near-obstacle weight.
+    fwd: 45.4
+    result: n = 999 test cases.
+    runs: [Experiments/3dshape/Tshape3d_env1_blockwise_unweighted]
+
+  - id: shape_metric.origarch
+    parent: shape_metric
+    title: Original (single-route) network
+    status: win
+    date: 2026-10-06
+    change: --arch original (model_network_original.py) instead of two_route.
+    fwd: 52.7
+    coll: 46.5
+    result: >-
+      3 seeds 52.5 ± 2.7. Lshape3d_env3 84.6, Ashape3d_env4 75.9. Loses to
+      lie_metric.origarch on every test set in all three envs (McNemar p < 1e-4
+      on Tshape3d_env1).
+    notes: |
+      Mostly fails by collision (46-79% of Tshape3d_env1 cases). Tracks the
+      target speeds best of the three fields, but costs partly add instead of
+      combining in quadrature (norm exponent p = 1.60).
+    runs:
+      - Experiments/3dshape_shape_metric/Tshape3d_env1_shape_metric_origarch
+      - results/compare/summary.md
+
+  - id: shape_metric.rnl
+    parent: shape_metric
+    title: "RNL, first settings (w 1e-3)"
+    status: fail
+    date: 2026-10-06
+    change: >-
+      Add RNL (Shape-NTFields eqs. 6-7, models/rnl.py) on the band endpoint x0.
+      eps 0.01, rho_trans = rho_rot = -1, weight 1e-3 from epoch 0.
+    fwd: 3.7
+    result: orig probe 3.7 · lie probe 2.7.
+    runs:
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_orig
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_lie
+    code: [models/rnl.py]
+
+  - id: shape_metric.rnl.w1e-4
+    parent: shape_metric.rnl
+    title: RNL weight 1e-4
+    status: fail
+    date: 2026-10-06
+    change: RNL weight 1e-3 -> 1e-4.
+    fwd: 22.3
+    result: orig 22.1 · lie 22.3.
+    runs:
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_orig_w1e-4
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_lie_w1e-4
+
+  - id: shape_metric.rnl.w1e-4.w1e-5
+    parent: shape_metric.rnl.w1e-4
+    title: RNL weight 1e-5
+    status: dropped
+    date: 2026-10-06
+    change: RNL weight 1e-4 -> 1e-5.
+    result: Training stopped near epoch 1100 (both probes); never evaluated.
+    runs:
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_orig_w1e-5
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_lie_w1e-5
+
+  - id: shape_metric.rnl.w1e-4.ramp
+    parent: shape_metric.rnl.w1e-4
+    title: RNL ramped in
+    status: fail
+    date: 2026-10-06
+    change: Weight 1e-4 ramped linearly from epoch 1500 over 2000 epochs; 5000 epochs.
+    fwd: 28.9
+    result: orig 28.9 (ep 4000) / 25.7 (ep 5000) · lie 24.7 / 24.8.
+    runs:
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_orig_ramp
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_lie_ramp
+
+  - id: shape_metric.rnl.w1e-4.ramp.sntf
+    parent: shape_metric.rnl.w1e-4.ramp
+    title: RNL with Shape-NTFields settings
+    status: win
+    date: 2026-10-07
+    change: >-
+      Shape-NTFields values (now rnl.DEFAULTS): eps 0.02, rho_trans -20,
+      rho_rot -6, contribution capped at 2/3 of the Eikonal term. 5000 epochs.
+    fwd: 55.6
+    result: >-
+      orig 55.6 · lie 52.4 at ep 5000 (ep 4000: 55.0 / 44.2). Compare suite:
+      no-RNL 41.7 -> 54.0 (orig) / 52.6 (lie); +8 to +14 points on every test
+      set; the two probes are indistinguishable (paired p >= 0.26).
+      Seed 2 trained for both probes.
+    runs:
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_orig_sntf
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_lie_sntf
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_orig_sntf_s2
+      - Experiments/3dshape_shape_metric_rnl/Tshape3d_env1_shape_metric_rnl_lie_sntf_s2
+      - analysis/run_rnl_suite.sh
+
+  - id: shape_metric.sqrt
+    parent: shape_metric
+    title: (sqrt(S|g|)-1)^2 residual
+    status: idea
+    change: >-
+      Port the residual fix that took lie_metric from 39.6 to 82.7. shape_metric
+      still uses (S|g|-1)^2 per block.
+
+  - id: shape_metric.obstacle_weight
+    parent: shape_metric
+    title: Port near-obstacle weight
+    status: idea
+    change: >-
+      Port clamp(1/S_block, 20) for S_block < 0.9 from early_blockwise
+      (69.0 vs 45.4 unweighted) to the current shape_metric loss.
+
+  # ---------------------------------------------------------------- lie_metric
+  - id: lie_metric
+    title: Anisotropic Eikonal + Lie rotation gradient (two_route)
+    status: ref
+    date: 2026-10-06
+    change: >-
+      N = sqrt(S_dist^2 |grad_v tau|^2 + S_angle^2 |grad_w tau|^2) per endpoint,
+      rotation block = body-frame Lie gradient (lie_rot_grad), residual
+      1e-2*(N-1)^2. two_route network.
+    fwd: 39.6
+    coll: 58.0
+    notes: |
+      models/lie_metric in the repo is still this (N-1)^2 version.
+      Across envs lie reads rotation ~2.6x too fast (median): the anisotropic
+      loss only enforces rotational slowness along directions that contain
+      rotation.
+    runs:
+      - Experiments/3dshape_lie_metric/Tshape3d_env1_lie_metric
+      - results/output_3d/Tshape3d_env1_lie_metric_final
+    code: [models/lie_metric/]
+
+  - id: lie_metric.early_aniso
+    parent: lie_metric
+    title: "Early: aniso (pre-split package)"
+    status: mixed
+    date: 2026-10-05
+    change: Same loss in the older unified package (eikonal_loss='aniso').
+    fwd: 39.8
+    runs: [Experiments/3dshape/Tshape3d_env1_lie]
+
+  - id: lie_metric.early_aniso.weighted
+    parent: lie_metric.early_aniso
+    title: "Early: aniso, weighted"
+    status: win
+    date: 2026-10-05
+    change: (N-1)^2 multiplied by clamp(1/min(S_dist, S_angle), 20) when that min < 0.9.
+    fwd: 61.5
+    runs: [Experiments/3dshape/Tshape3d_env1_lie_weighted]
+
+  - id: lie_metric.origarch
+    parent: lie_metric
+    title: Original (single-route) network
+    status: win
+    date: 2026-10-06
+    change: --arch original instead of two_route.
+    fwd: 71.3
+    coll: 25.9
+    result: >-
+      3 seeds 71.4 ± 2.0. Lshape3d_env3 93.4 (metric 88.0), Ashape3d_env4 83.0
+      (metric 87.1). Farthest pairs 40.3 vs metric 33.8; beats shape on every
+      set in every env.
+    notes: |
+      Plans the most efficient paths: 6-25% less geodesic rotation and 7-23%
+      less translation than metric on cases both solve. Costs combine in
+      quadrature (p = 2.01), as the anisotropic equation implies.
+    runs:
+      - Experiments/3dshape_lie_metric/Tshape3d_env1_lie_metric_origarch
+      - results/compare/summary.md
+
+  - id: lie_metric.origarch.sqrt
+    parent: lie_metric.origarch
+    title: (sqrt(N)-1)^2 residual
+    status: win
+    date: 2026-10-07
+    change: Residual (N-1)^2 -> (sqrt(N)-1)^2, nothing else changed.
+    fwd: 81.5
+    coll: 11.6
+    result: The (N-1)^2 parent scored 72.7 in this same evaluation.
+    runs: [results/sqrt_vs_baseline_tshape_env1]
+
+  - id: lie_metric.sqrt
+    parent: lie_metric
+    title: (sqrt(N)-1)^2 residual
+    status: win
+    date: 2026-10-07
+    change: Residual (N-1)^2 -> (sqrt(N)-1)^2, nothing else changed.
+    fwd: 82.7
+    coll: 10.4
+    result: >-
+      Best Tshape3d_env1 result so far. In the same evaluation the (N-1)^2
+      parent scored 40.0 and the metric baseline's 3 seeds 76.3 / 78.1 / 80.8.
+    notes: |
+      (x-1)^2 barely pushes under-fit near-obstacle samples and harshly
+      penalises over-steep far-field gradients, so the field went flat near
+      obstacles and MPPI cut through them. Checkpoints were in a session
+      scratchpad: not yet committed to models/lie_metric.
+    runs: [results/sqrt_vs_baseline_tshape_env1]
+
+  - id: lie_metric.sqrt.commit
+    parent: lie_metric.sqrt
+    title: Make sqrt default; rerun
+    status: idea
+    change: >-
+      Make (sqrt(N)-1)^2 the default in models/lie_metric, then rerun 3 seeds
+      and the Lshape3d_env3 / Ashape3d_env4 compare suite.
+
+  - id: lie_metric.mppi_temp
+    parent: lie_metric
+    title: MPPI temperature recalibration
+    status: mixed
+    date: 2026-10-07
+    change: Retune the MPPI temperature for the (N-1)^2 field.
+    result: No effect on success or collisions.
+
+  - id: lie_metric.rnl
+    parent: lie_metric
+    title: "RNL, first settings (w 1e-3)"
+    status: fail
+    date: 2026-10-06
+    change: >-
+      Add RNL on x0 (models/rnl.py): eps 0.01, rho_trans = rho_rot = -1,
+      weight 1e-3 from epoch 0.
+    fwd: 0.1
+    result: orig probe 0.1 · lie probe 0.0.
+    notes: |
+      RNL breaks the anisotropic Eikonal at every setting tried: its per-block
+      speed targets fight an equation that only constrains the combined speed
+      (98% of rollouts do not converge).
+    runs:
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_orig
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_lie
+    code: [models/rnl.py]
+
+  - id: lie_metric.rnl.w1e-4
+    parent: lie_metric.rnl
+    title: RNL weight 1e-4
+    status: fail
+    date: 2026-10-06
+    change: RNL weight 1e-3 -> 1e-4.
+    fwd: 13.5
+    result: orig 2.6 · lie 13.5.
+    runs:
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_orig_w1e-4
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_lie_w1e-4
+
+  - id: lie_metric.rnl.w1e-4.w1e-5
+    parent: lie_metric.rnl.w1e-4
+    title: RNL weight 1e-5
+    status: dropped
+    date: 2026-10-06
+    change: RNL weight 1e-4 -> 1e-5.
+    result: Training stopped near epoch 600-1050; never evaluated.
+    runs:
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_orig_w1e-5
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_lie_w1e-5
+
+  - id: lie_metric.rnl.w1e-4.ramp
+    parent: lie_metric.rnl.w1e-4
+    title: RNL ramped in
+    status: fail
+    date: 2026-10-06
+    change: Weight 1e-4 ramped linearly from epoch 1500 over 2000 epochs; 5000 epochs.
+    fwd: 17.6
+    result: orig 17.4 (ep 4000) / 17.6 (ep 5000) · lie 16.6 / 17.1.
+    runs:
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_orig_ramp
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_lie_ramp
+
+  - id: lie_metric.rnl.w1e-4.ramp.sntf
+    parent: lie_metric.rnl.w1e-4.ramp
+    title: RNL with Shape-NTFields settings
+    status: fail
+    date: 2026-10-07
+    change: eps 0.02, rho_trans -20, rho_rot -6, cap 2/3 of the Eikonal term. 5000 epochs.
+    fwd: 0.4
+    result: orig 0.4 · lie 0.0 at ep 5000.
+    runs:
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_orig_sntf
+      - Experiments/3dshape_lie_metric_rnl/Tshape3d_env1_lie_metric_rnl_lie_sntf
+
+  - id: lie_metric.chart_free
+    parent: lie_metric
+    title: Chart-free rotation input
+    status: idea
+    change: >-
+      Feed quaternion or rotation-matrix features instead of the rotation
+      vector. Applies to every package.
+    notes: |
+      No field knows rotations wrap: poses 10-100 deg apart across the
+      rotation-vector cut locus cost 6.1-6.8x an equal-angle control, and the
+      same pose written with its two rotation vectors gets tau 22-29% apart.
+      The Lie gradient fixes the local metric, not the chart.
+
+  # ---------------------------------------------------------------- lie_metric_6s
+  - id: lie_metric_6s
+    title: Six per-axis speeds (diagonal metric)
+    status: fail
+    date: 2026-10-07
+    change: >-
+      metric_baseline network and trainer with
+      sqrt(g^T diag(S_x^2, S_y^2, S_z^2, S_r1^2, S_r2^2, S_r3^2) g) = 1,
+      g = (world dtau/dp, body Lie rotation gradient), mapped
+      1e-2*(sqrt(N)-1)^2. Speeds = free travel along each world axis / free
+      rotation about each body axis (speeds_6.npy).
+    fwd: 17.3
+    coll: 82.4
+    result: >-
+      824/1000 failures are collisions. Training loss is lower than the
+      baseline's (6e-4 vs 1.8e-3), so the fit is fine.
+    notes: |
+      Hypothesis (unverified): in the band some axis is usually free (62% of x0
+      samples have S_x saturated), so the residual is met by a free-space-sized
+      gradient along that axis and near-obstacle samples no longer force a
+      steep barrier. The diagonal metric also overstates approach speed
+      (translation 1.23x, rotation 1.85x median).
+    runs:
+      - Experiments/3dshape_lie_metric_6s/Tshape3d_env1_lie_metric_6s
+      - results/output_3d/Tshape3d_env1_lie_metric_6s
+    code: [models/lie_metric_6s/, dataprocessing/preprocess_obj_6s.py]
+
+  - id: lie_metric_6s.isoctrl
+    parent: lie_metric_6s
+    title: Isotropic control
+    status: ref
+    date: 2026-10-07
+    change: Same code with speeds_6 = [S_dist x3, S_angle x3].
+    fwd: 76.8
+    coll: 12.7
+    result: Matches metric_baseline, so the pipeline is sound and the drop comes from the per-axis speeds.
+
+  - id: lie_metric_6s.cap
+    parent: lie_metric_6s
+    title: Cap S_i at k x isotropic speed
+    status: idea
+    change: >-
+      Keep a proximity penalty by capping every per-axis speed at a multiple of
+      the isotropic speed. Compare against isoctrl, not only the baseline.
+
+  # ---------------------------------------------------------------- metric_lie_rhombus
+  - id: metric_lie_rhombus
+    title: Additive block cost (rhombus), two_route
+    status: fail
+    date: 2026-10-08
+    change: >-
+      lie_metric.sqrt with the time cost dt = da/S_dist + db/S_angle (da = translation step length,
+      db = rotation step angle) in
+      place of the notes' sqrt (ellipse). Its Eikonal equation is the dual
+      norm N = max(S_dist |grad_v tau|, S_angle |grad_w tau|) = 1, mapped
+      1e-2*(sqrt(N)-1)^2. Rotation block = body-frame Lie gradient. two_route.
+    fwd: 49.7
+    coll: 46.5
+    result: >-
+      465/503 failures are collisions. 12-set eval_suite (results/lie_rhombus_tshape_env1,
+      mean of 11 sets): fwd 35.0 (sqrt two_route 66.3, (N-1)^2 two_route 28.5,
+      baseline 55.7), sd 50.9 (78.8 / 39.1 / 77.4). Lowest non-convergence of all
+      (8.8%): it reaches the goal but through obstacles. Final loss 1.72e-3.
+    notes: |
+      It does learn the rhombus: free-space unit-time set q = 1.31 in
+      (x/X)^q + (y/Y)^q = 1 (q = 2 ellipse, 1 rhombus) vs 1.50 for sqrt
+      two_route (field_shape.png). But free-space gradients overshoot (St|g_v|
+      1.19, Sr|g_w| 1.14 median) and the near-obstacle translation gradient is
+      the flattest of the four lie/rhombus models, so the barrier contrast
+      (median |g_v| translation-blocked / free) is 3.5 vs 5.6 for sqrt two_route
+      (band_barrier.json). Over all seven models (2026-10-08) contrast ranks
+      collision rate only within an architecture ((N-1)^2 < rhombus < ellipse:
+      two-route 3.2 / 3.5 / 5.6, original 3.1 / 4.4 / 5.2); two-route models
+      collide more at similar contrast, and the baseline is 7.4.
+      Hypothesis (unverified): the net's tau = sum of soft-max |e0-e1| over
+      fused (trans+rot mixed) embedding dims can only round the rhombus's
+      corners, and the max residual is met by inflating tau in free space.
+      Analytic check: T = |dp|/St + theta/Sr gives N = 1 to 5e-9 through the
+      residual code; --dual-p swaps the max for a p-norm (p = 2 is lie_metric).
+    runs:
+      - Experiments/3dshape_metric_lie_rhombus/Tshape3d_env1_metric_lie_rhombus
+      - results/output_3d/Tshape3d_env1_metric_lie_rhombus
+      - results/lie_rhombus_tshape_env1
+    code: [models/metric_lie_rhombus/]
+
+  - id: metric_lie_rhombus.origarch
+    parent: metric_lie_rhombus
+    title: Original (single-route) network
+    status: mixed
+    date: 2026-10-08
+    change: Same loss on the original single-route metric network (--arch original).
+    fwd: 76.4
+    coll: 18.1
+    result: >-
+      Matches the baseline (77.7) but below lie_metric.origarch.sqrt (81.5).
+      eval_suite mean of 11 sets: fwd 57.2 (sqrt orig 63.1, (N-1)^2 orig 55.8,
+      baseline 55.7), sd 72.8 (76.8 / 71.7 / 77.4). Final loss 1.48e-3.
+    notes: |
+      Field stays nearly round (q = 1.80; sqrt orig 1.97): the single-route
+      net mixes all six coordinates from the Fourier features on, so it fits
+      a circle between the rhombus's inscribed and circumscribed circles.
+      Barrier contrast 4.4 (sqrt orig 5.2).
+    runs:
+      - Experiments/3dshape_metric_lie_rhombus/Tshape3d_env1_metric_lie_rhombus_origarch
+      - results/output_3d/Tshape3d_env1_metric_lie_rhombus_origarch
+      - results/lie_rhombus_tshape_env1
+    code: [models/metric_lie_rhombus/]
+
+  - id: metric_lie_rhombus.split_head
+    parent: metric_lie_rhombus
+    title: Rhombus-capable distance head
+    status: idea
+    change: >-
+      Feed some distance groups from the translation-only and rotation-only
+      encoders (bypassing the fuse MLP), so tau can be additive across blocks
+      and represent the rhombus without inflating free-space tau. Check the
+      barrier contrast, not only the shape.
+
+  - id: metric_lie_rhombus.dual_p
+    parent: metric_lie_rhombus
+    title: Finite dual exponent (--dual-p 4)
+    status: idea
+    change: >-
+      p-norm instead of max (rounded rhombus, primal l_{4/3}): a shape the
+      network can represent, so less free-space inflation; also gives the
+      non-max block a gradient.

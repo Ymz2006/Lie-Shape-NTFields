@@ -1,0 +1,412 @@
+<title>Metric, Shape and Lie NTFields</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column (~70ch) for prose; figures and tables run to a wider measure. */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --ink: #161a20; --ink-2: #4a5160; --muted: #6f7787;
+  --rule: #dfe3e9; --rule-2: #eceff3; --accent: #1f5f9e;
+  --s-metric: #2a78d6; --s-shape: #eb6834; --s-lie: #1baf7a;
+  --div-neg: #2a78d6; --div-mid: #f0efec; --div-pos: #e34948;
+  --seq-0: #eef4fc; --seq-1: #cde2fb; --seq-2: #86b6ef; --seq-3: #3987e5; --seq-4: #1c5cab; --seq-5: #0d366b;
+  --good: #0ca30c; --critical: #d03b3b;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121418; --panel: #1a1d22; --ink: #e9ebef; --ink-2: #b3b9c4; --muted: #868e9b;
+    --rule: #2c3139; --rule-2: #23272d; --accent: #7fb3ea;
+    --s-metric: #3987e5; --s-shape: #d95926; --s-lie: #199e70;
+    --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767;
+    --seq-0: #1d2633; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #6da7ec; --seq-5: #cde2fb;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121418; --panel: #1a1d22; --ink: #e9ebef; --ink-2: #b3b9c4; --muted: #868e9b;
+  --rule: #2c3139; --rule-2: #23272d; --accent: #7fb3ea;
+  --s-metric: #3987e5; --s-shape: #d95926; --s-lie: #199e70;
+  --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767;
+  --seq-0: #1d2633; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #6da7ec; --seq-5: #cde2fb;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 40px; }
+header { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--rule); padding-bottom: 22px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 600; font-size: clamp(30px, 4.4vw, 44px); line-height: 1.08; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 26px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--f-display); font-weight: 500; font-size: 18px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 72ch; }
+.lede { font-size: 17px; color: var(--ink-2); max-width: 70ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-2); }
+.facts b { color: var(--ink); font-weight: 500; }
+section { display: flex; flex-direction: column; gap: 16px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.note { font-size: 13.5px; color: var(--muted); max-width: 80ch; }
+.eq { font-family: var(--f-mono); font-size: 13.5px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; overflow-x: auto; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+.eq .k { font-weight: 500; }
+.findings { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; max-width: 86ch; }
+.findings li::marker { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.fig { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fig-title { font-weight: 600; font-size: 14px; }
+.fig-sub { font-size: 12.5px; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--rule-2); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 180px; }
+thead th { font-family: var(--f-mono); font-weight: 500; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--panel); position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+td.best { font-weight: 600; }
+.mono { font-family: var(--f-mono); }
+.pill { display: inline-block; font-family: var(--f-mono); font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-2); }
+.pill.sig { border-color: var(--ink-2); color: var(--ink); }
+svg text { font-family: var(--f-mono); fill: var(--ink-2); font-size: 11px; }
+svg .axis line, svg .axis path { stroke: var(--rule); }
+svg .grid line { stroke: var(--rule-2); }
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); font-family: var(--f-mono); font-size: 12px; padding: 6px 8px; border-radius: 6px; z-index: 10; max-width: 300px; line-height: 1.4; }
+.heat { display: grid; gap: 2px; font-family: var(--f-mono); font-size: 10.5px; }
+.heat .c { border-radius: 2px; text-align: center; padding: 5px 0; min-width: 0; }
+.heat .h { color: var(--muted); text-align: center; font-size: 10px; align-self: end; padding-bottom: 2px; }
+.heat .r { color: var(--muted); font-size: 10px; text-align: right; padding-right: 4px; align-self: center; white-space: nowrap; }
+.scale { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-family: var(--f-mono); flex-wrap: wrap; }
+.scale .bar { height: 10px; width: 160px; border-radius: 2px; }
+footer { border-top: 1px solid var(--rule); padding-top: 16px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 560px) { body { font-size: 14.5px; } .wrap { padding-inline: 16px; gap: 32px; } h2 { font-size: 22px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">NTFields on SE(3) · Tshape3d_env1 · same network, Eikonal loss only</div>
+    <h1>Metric, Shape and Lie NTFields</h1>
+    <p class="lede" id="lede"></p>
+    <div class="facts" id="facts"></div>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>What differs</h2>
+      <p class="note">All three use the original metric NTFields network (single-route, Fourier features, Lipschitz layers, τ = smooth-max distance between endpoint embeddings), the same data, 4000 epochs and the same trainer. Only the Eikonal residual changes. S*<sub>d</sub>, S*<sub>a</sub> are the warped translational / rotational clearance speeds; S*<sub>c</sub> is the baseline's warped combined speed.</p></div>
+    <div class="eq">
+      <span class="k" style="color:var(--s-metric)">metric</span><span>( √(S*<sub>c</sub> · |∇<sub>q</sub>τ|) − 1 )²  — one isotropic speed for all six coordinates</span>
+      <span class="k" style="color:var(--s-shape)">shape</span><span>( S*<sub>d</sub>|∇<sub>p</sub>τ| − 1 )² + ( S*<sub>a</sub>|∇<sub>r</sub>τ| − 1 )²  — blocked: each block on its own, chart (rotation-vector) gradient</span>
+      <span class="k" style="color:var(--s-lie)">lie</span><span>( √(S*<sub>d</sub>²|∇<sub>v</sub>τ|² + S*<sub>a</sub>²|∇<sub>ω</sub>τ|²) − 1 )²  — anisotropic, body-frame Lie gradient ∇<sub>ω</sub>τ = J<sub>r</sub><sup>−T</sup>∇<sub>r</sub>τ</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Findings</h2></div>
+    <ul class="findings" id="findings"></ul>
+  </section>
+
+  <section id="planning">
+    <div class="sec-head"><h2>Planning</h2>
+      <p class="note">Forward MPPI planner of evaluate_training_3d_batched.py (50 samples, horizon 5, step 0.015, 200 iterations, convergence ball 0.01), same random stream for every model. Success = converged without any waypoint in collision. Bars show the mean over seeds; whiskers span the seeds' minimum to maximum.</p></div>
+    <div class="legend" id="legend-main"></div>
+    <div class="fig"><div class="fig-title">Success rate by test set · Tshape3d_env1</div><div id="ch-success"></div></div>
+    <div class="tbl-wrap"><table id="tb-success"></table></div>
+    <div class="grid2">
+      <div class="fig"><div class="fig-title">Success vs start–goal rotation (geodesic angle)</div><div class="fig-sub">All Tshape3d_env1 test sets pooled, seeds pooled</div><div id="ch-rotgeo"></div></div>
+      <div class="fig"><div class="fig-title">Success vs start–goal translation</div><div class="fig-sub">All Tshape3d_env1 test sets pooled, seeds pooled</div><div id="ch-trans"></div></div>
+    </div>
+    <div class="grid2">
+      <div class="fig"><div class="fig-title">Success vs closeness to the cut locus</div><div class="fig-sub">larger of the start and goal rotation angles |θ|; all Tshape3d_env1 sets and seeds pooled</div><div id="ch-maxtheta"></div></div>
+      <div class="fig"><div class="fig-title">Straight-line-feasible vs infeasible cases</div><div class="fig-sub">is the linear interpolation from start to goal collision-free (50 steps, same collision test)</div><div class="tbl-wrap" style="border:0"><table id="tb-lin"></table></div></div>
+    </div>
+    <h3>Paired per-case comparisons</h3>
+    <p class="note">Same test cases, seed-matched models. "Only A" counts cases A solves and B does not. Exact two-sided McNemar test on the discordant counts, pooled over seeds. Length ratios are medians over cases both models solve.</p>
+    <div class="tbl-wrap"><table id="tb-pairs"></table></div>
+    <h3>Path quality and failure modes</h3>
+    <div class="tbl-wrap"><table id="tb-paths"></table></div>
+  </section>
+
+  <section id="field">
+    <div class="sec-head"><h2>The time field</h2>
+      <p class="note">Held-out configurations sampled like the training data and labelled with the same clearance computation (translational distance d, rotational clearance = smallest shape-to-obstacle angle about the body centre). Directional speed = h / (τ(q, q+δ) − τ(q, q)) for a short pure translation (h = 0.02) or a short pure body-frame rotation (h = 0.02 turns), which every model can be read with. Cells with fewer than 20 configurations are blank.</p></div>
+    <div class="grid2">
+      <div class="fig"><div class="fig-title">Translational speed vs translational clearance</div><div class="fig-sub">median directional speed; dashed = target S*<sub>d</sub></div><div id="ch-sd"></div></div>
+      <div class="fig"><div class="fig-title">Rotational speed vs rotational clearance</div><div class="fig-sub">median directional speed; dashed = target S*<sub>a</sub></div><div id="ch-sa"></div></div>
+    </div>
+    <div class="fig"><div class="fig-title">Directional speeds binned by translational × rotational clearance</div>
+      <div class="fig-sub">rows: d / margin (margin = 0.05); columns: rotational clearance in degrees. Seed means of bin medians.</div>
+      <div class="scale"><span>speed</span><span class="bar" id="seq-bar"></span><span>0 → 1.2</span></div>
+      <div id="heat-speed" class="grid4"></div></div>
+    <div class="fig"><div class="fig-title">Gradient speeds, the quantities the Eikonal losses constrain</div>
+      <div class="fig-sub">1/|∇<sub>p</sub>τ| (translational) and 1/|∇<sub>ω</sub>τ| (rotational, body frame) at q for four generic goals, median per configuration. The blocked loss pins each to its target; the anisotropic loss only bounds them from below (S·|∇τ| ≤ 1 per block), so for lie they read high wherever the optimal motion is mostly the other block.</div>
+      <div id="heat-grad" class="grid4"></div></div>
+    <div class="fig"><div class="fig-title">Calibration: log(predicted / target) per bin</div>
+      <div class="fig-sub">blue: slower than the target (over-cautious), red: faster than the target (under-penalised), grey: on target</div>
+      <div class="scale"><span>−2</span><span class="bar" id="div-bar"></span><span>+2</span></div>
+      <div id="heat-ratio" class="grid3"></div></div>
+    <div class="tbl-wrap"><table id="tb-calib"></table></div>
+  </section>
+
+  <section id="metric">
+    <div class="sec-head"><h2>Which metric did each field learn</h2>
+      <p class="note">From probe points, τ is measured for short steps (h = 0.05) that mix translation and body rotation at angle φ (0° = pure translation, 90° = pure rotation). If the two costs add, √2·τ(45°) = τ(0°) + τ(90°) (exponent p = 1, the blocked equation's free-space solution). If they combine in quadrature, p = 2 (the isotropic and anisotropic equations). The right panel shows the start gradient's dual norms as the goal direction turns: the blocked equation predicts (1, 1) throughout, the anisotropic one the quarter circle.</p></div>
+    <div class="grid2">
+      <div class="fig"><div class="fig-title">Dual norms of ∇τ as the goal direction turns</div><div class="fig-sub">x = S*<sub>d</sub>|∇<sub>p</sub>τ|, y = S*<sub>a</sub>|∇<sub>ω</sub>τ|; each line runs from φ = 0° (lower right) to φ = 90° (upper left) in 22.5° steps</div><div id="ch-dual"></div></div>
+      <div class="tbl-wrap" style="align-self:start"><table id="tb-metric"></table></div>
+    </div>
+  </section>
+
+  <section id="rotation">
+    <div class="sec-head"><h2>Rotation, the chart and the cut locus</h2>
+      <p class="note">Wrap pairs: same position and axis, rotations θ₀ and −θ₁ with θ in [130°, 175°]: 10–100° apart on SO(3), but far apart in rotation-vector coordinates. Each has a control with the same start, axis and geodesic angle on the near side. Cut-locus pairs: one pose written with two rotation vectors (r and r − r/|r|).</p></div>
+    <div class="tbl-wrap"><table id="tb-rot"></table></div>
+    <div class="fig"><div class="fig-title">Rotational calibration vs rotation magnitude of the configuration</div><div class="fig-sub">median log(directional rotational speed / S*<sub>a</sub>) per |θ| bin; flat = chart-independent</div><div id="ch-theta"></div></div>
+  </section>
+
+  <section id="cells">
+    <div class="sec-head"><h2>Other environments</h2><p class="note" id="cells-note"></p></div>
+    <div class="tbl-wrap"><table id="tb-cells"></table></div>
+    <h3>Field statistics in these environments</h3>
+    <div class="tbl-wrap"><table id="tb-cellfield"></table></div>
+  </section>
+
+  <section id="rnl">
+    <div class="sec-head"><h2>Relative normal loss on the two-route network</h2>
+      <p class="note" id="rnl-note"></p></div>
+    <div class="tbl-wrap"><table id="tb-rnl"></table></div>
+    <h3>Same models on the wider test suite</h3>
+    <p class="note">analysis/plan_eval.py (forward planner, same random stream), final-epoch RNL checkpoints against the no-RNL two-route baselines (4000 epochs). Paired columns count cases only one of the two probes solves, with the exact McNemar p-value.</p>
+    <div class="tbl-wrap"><table id="tb-rnl-suite"></table></div>
+  </section>
+
+  <footer>
+    <div id="foot-gen"></div>
+    <div>Code: analysis/ (make_sets.py, plan_eval.py, field_analysis.py, lin_valid.py, aggregate.py, build_report.py). Raw per-case records: results/compare/.</div>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DATA = __DATA__;
+const KINDS = ['metric', 'shape', 'lie'];
+const NAMES = {metric: 'metric', shape: 'shape', lie: 'lie'};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const col = k => `var(--s-${k})`;
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}, parent) { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (parent) parent.appendChild(e); return e; }
+function txt(tag, attrs, s, parent) { const e = el(tag, attrs, parent); e.textContent = s; return e; }
+const pct = v => v == null ? '–' : (100 * v).toFixed(1);
+const f2 = v => v == null ? '–' : (+v).toFixed(2);
+const f3 = v => v == null ? '–' : (+v).toFixed(3);
+const tip = $('tip');
+function showTip(ev, html) { tip.innerHTML = html; tip.hidden = false; const x = Math.min(ev.clientX + 14, window.innerWidth - 310); tip.style.left = x + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; }
+function hideTip() { tip.hidden = true; }
+function legend(id) { $(id).innerHTML = KINDS.map(k => `<span><i class="sw" style="background:${col(k)}"></i>${NAMES[k]}</span>`).join(''); }
+
+/* ---------- header ---------- */
+$('lede').textContent = DATA.lede;
+$('facts').innerHTML = DATA.facts.map(([k, v]) => `<span>${k} <b>${v}</b></span>`).join('');
+$('findings').innerHTML = DATA.findings.map(f => `<li>${f}</li>`).join('');
+$('foot-gen').textContent = 'Generated ' + DATA.generated;
+legend('legend-main');
+
+/* ---------- grouped horizontal bars ---------- */
+function hbars(target, groups, opts = {}) {
+  const W = 760, labelH = 18, barH = 9, gap = 3, groupGap = 14, padL = 6, padR = 46;
+  const gh = labelH + KINDS.length * (barH + gap) + groupGap;
+  const H = groups.length * gh + 24;
+  const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': opts.aria || 'bar chart'});
+  const x = v => padL + (W - padL - padR) * v;
+  const gGrid = el('g', {class: 'grid'}, svg);
+  for (const t of [0, .25, .5, .75, 1]) { el('line', {x1: x(t), x2: x(t), y1: 0, y2: H - 20}, gGrid); txt('text', {x: x(t), y: H - 6, 'text-anchor': 'middle'}, (t * 100) + '%', svg); }
+  groups.forEach((g, gi) => {
+    const y0 = gi * gh;
+    txt('text', {x: padL, y: y0 + 13, style: 'fill:var(--ink);font-family:var(--f-body);font-size:12.5px'}, g.label, svg);
+    KINDS.forEach((k, ki) => {
+      const v = g.values[k]; if (!v) return;
+      const y = y0 + labelH + ki * (barH + gap);
+      const w = Math.max(0, x(v.mean) - padL);
+      el('rect', {x: padL, y, width: Math.max(w, 1), height: barH, rx: 2, fill: col(k)}, svg);
+      if (v.min != null && v.max != null && v.max > v.min) {
+        el('line', {x1: x(v.min), x2: x(v.max), y1: y + barH / 2, y2: y + barH / 2, stroke: 'var(--ink)', 'stroke-width': 1.5}, svg);
+      }
+      txt('text', {x: x(v.mean) + 6 + (v.max ? x(v.max) - x(v.mean) : 0), y: y + barH - 1}, pct(v.mean), svg);
+      const hit = el('rect', {x: 0, y: y - 1, width: W, height: barH + 2, fill: 'transparent'}, svg);
+      hit.addEventListener('mousemove', ev => showTip(ev, `<b>${g.label}</b><br>${NAMES[k]}: ${pct(v.mean)}%` + (v.n > 1 ? ` (${v.n} seeds: ${v.values.map(pct).join(', ')})` : '') + (v.extra ? '<br>' + v.extra : '')));
+      hit.addEventListener('mouseleave', hideTip);
+    });
+  });
+  $(target).appendChild(svg);
+}
+
+/* ---------- line chart over categories ---------- */
+function lines(target, xLabels, series, opts = {}) {
+  const W = 520, H = 250, L = 46, R = 34, T = 12, B = 40;
+  const yMax = opts.yMax ?? 1, yMin = opts.yMin ?? 0;
+  const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': opts.aria || 'line chart', style: 'max-width:640px'});
+  const n = xLabels.length;
+  const x = i => L + (W - L - R) * (n === 1 ? .5 : i / (n - 1));
+  const y = v => T + (H - T - B) * (1 - (v - yMin) / (yMax - yMin));
+  const grid = el('g', {class: 'grid'}, svg);
+  const ticks = opts.ticks || [0, .25, .5, .75, 1];
+  ticks.forEach(t => { el('line', {x1: L, x2: W - R, y1: y(t), y2: y(t)}, grid); txt('text', {x: L - 6, y: y(t) + 4, 'text-anchor': 'end'}, opts.tickFmt ? opts.tickFmt(t) : (t * 100) + '%', svg); });
+  xLabels.forEach((s, i) => txt('text', {x: x(i), y: H - B + 16, 'text-anchor': 'middle'}, s, svg));
+  if (opts.xTitle) txt('text', {x: (L + W - R) / 2, y: H - 6, 'text-anchor': 'middle', style: 'fill:var(--muted)'}, opts.xTitle, svg);
+  if (opts.ref) opts.ref.forEach(r => { const pts = r.values.map((v, i) => v == null ? null : [x(i), y(v)]).filter(Boolean); if (pts.length > 1) el('polyline', {points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4'}, svg); });
+  for (const k of KINDS) {
+    const vals = series[k]; if (!vals) continue;
+    const pts = vals.map((v, i) => v == null ? null : [x(i), y(v)]).filter(Boolean);
+    if (pts.length > 1) el('polyline', {points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: col(k), 'stroke-width': 2}, svg);
+    vals.forEach((v, i) => { if (v == null) return; el('circle', {cx: x(i), cy: y(v), r: 4.5, fill: col(k), stroke: 'var(--panel)', 'stroke-width': 2}, svg); });
+  }
+  const hit = el('rect', {x: L, y: T, width: W - L - R, height: H - T - B, fill: 'transparent'}, svg);
+  const cross = el('line', {y1: T, y2: H - B, stroke: 'var(--muted)', 'stroke-width': 1, visibility: 'hidden'}, svg);
+  hit.addEventListener('mousemove', ev => {
+    const r = svg.getBoundingClientRect(); const px = (ev.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round((px - L) / ((W - L - R) / Math.max(1, n - 1)))));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    const fmt = opts.valFmt || (v => pct(v) + '%');
+    let h = `<b>${xLabels[i]}</b>`;
+    for (const k of KINDS) if (series[k] && series[k][i] != null) h += `<br>${NAMES[k]}: ${fmt(series[k][i])}` + (opts.counts && opts.counts[k] ? ` (n=${opts.counts[k][i]})` : '');
+    if (opts.ref) opts.ref.forEach(r => { if (r.values[i] != null) h += `<br>${r.name}: ${fmt(r.values[i])}`; });
+    showTip(ev, h);
+  });
+  hit.addEventListener('mouseleave', () => { hideTip(); cross.setAttribute('visibility', 'hidden'); });
+  $(target).appendChild(svg);
+  const lg = document.createElement('div'); lg.className = 'legend';
+  lg.innerHTML = KINDS.filter(k => series[k]).map(k => `<span><i class="sw" style="background:${col(k)}"></i>${NAMES[k]}</span>`).join('') + (opts.ref ? opts.ref.map(r => `<span><i class="sw" style="background:none;border-top:2px dashed var(--ink-2);height:0;width:16px"></i>${r.name}</span>`).join('') : '');
+  $(target).appendChild(lg);
+}
+
+/* ---------- heatmaps ---------- */
+function lerp(a, b, t) { return a + (b - a) * t; }
+function hex2rgb(h) { h = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+function mix(c1, c2, t) { const a = hex2rgb(c1), b = hex2rgb(c2); return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(',')})`; }
+function seqColor(v, vmax) { const stops = ['--seq-0', '--seq-1', '--seq-2', '--seq-3', '--seq-4', '--seq-5'].map(css); const t = Math.max(0, Math.min(1, v / vmax)) * (stops.length - 1); const i = Math.min(stops.length - 2, Math.floor(t)); return mix(stops[i], stops[i + 1], t - i); }
+function divColor(v, vmax) { const t = Math.max(-1, Math.min(1, v / vmax)); return t < 0 ? mix(css('--div-mid'), css('--div-neg'), -t) : mix(css('--div-mid'), css('--div-pos'), t); }
+function inkFor(rgb) { const m = rgb.match(/\d+/g).map(Number); const L = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255; return L > 0.55 ? '#14171c' : '#f4f6f9'; }
+function heat(container, title, grid, rows, cols, colorFn, fmt, tipFn) {
+  const box = document.createElement('div'); box.className = 'fig'; box.style.padding = '12px';
+  box.innerHTML = `<div class="fig-title" style="font-size:13px">${title}</div>`;
+  const h = document.createElement('div'); h.className = 'heat'; h.style.gridTemplateColumns = `auto repeat(${cols.length}, minmax(0, 1fr))`;
+  h.appendChild(Object.assign(document.createElement('div'), {className: 'h', textContent: ''}));
+  cols.forEach(c => h.appendChild(Object.assign(document.createElement('div'), {className: 'h', textContent: c})));
+  rows.forEach((r, i) => {
+    h.appendChild(Object.assign(document.createElement('div'), {className: 'r', textContent: r}));
+    cols.forEach((c, j) => {
+      const v = grid[i][j]; const d = document.createElement('div'); d.className = 'c';
+      if (v == null) { d.style.background = 'transparent'; d.style.border = '1px dashed var(--rule)'; d.textContent = ''; }
+      else { const bg = colorFn(v); d.style.background = bg; d.style.color = inkFor(bg); d.textContent = fmt(v); d.tabIndex = 0;
+        d.addEventListener('mousemove', ev => showTip(ev, tipFn(i, j, v))); d.addEventListener('mouseleave', hideTip); }
+      h.appendChild(d);
+    });
+  });
+  box.appendChild(h); container.appendChild(box);
+}
+
+/* ---------- dual-norm chart ---------- */
+function dual(target) {
+  const W = 420, H = 380, L = 46, R = 16, T = 14, B = 42, max = Math.max(2.2, ...KINDS.flatMap(k => (DATA.dual[k] || []).flatMap(p => [p.x, p.y])).filter(Number.isFinite)) * 1.05;
+  const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': 'dual norm chart'});
+  const x = v => L + (W - L - R) * v / max, y = v => H - B - (H - T - B) * v / max;
+  const g = el('g', {class: 'grid'}, svg);
+  for (let t = 0; t <= max; t += 0.5) { el('line', {x1: x(t), x2: x(t), y1: T, y2: H - B}, g); el('line', {x1: L, x2: W - R, y1: y(t), y2: y(t)}, g); txt('text', {x: x(t), y: H - B + 15, 'text-anchor': 'middle'}, t.toFixed(1), svg); txt('text', {x: L - 6, y: y(t) + 4, 'text-anchor': 'end'}, t.toFixed(1), svg); }
+  txt('text', {x: (L + W - R) / 2, y: H - 8, 'text-anchor': 'middle', style: 'fill:var(--muted)'}, 'S*d · |∇p τ|', svg);
+  txt('text', {x: 12, y: (T + H - B) / 2, 'text-anchor': 'middle', transform: `rotate(-90 12 ${(T + H - B) / 2})`, style: 'fill:var(--muted)'}, 'S*a · |∇ω τ|', svg);
+  let arc = ''; for (let a = 0; a <= 90; a += 3) { const r = a * Math.PI / 180; arc += `${x(Math.cos(r))},${y(Math.sin(r))} `; }
+  el('polyline', {points: arc, fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4'}, svg);
+  txt('text', {x: x(0.08), y: y(0.42), style: 'fill:var(--muted)'}, 'anisotropic', svg);
+  el('rect', {x: x(1) - 5, y: y(1) - 5, width: 10, height: 10, fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 1.5}, svg);
+  txt('text', {x: x(1) - 9, y: y(1) - 8, 'text-anchor': 'end', style: 'fill:var(--muted)'}, 'blocked', svg);
+  for (const k of KINDS) {
+    const pts = DATA.dual[k]; if (!pts) continue;
+    el('polyline', {points: pts.map(p => `${x(p.x)},${y(p.y)}`).join(' '), fill: 'none', stroke: col(k), 'stroke-width': 2}, svg);
+    pts.forEach(p => { const c = el('circle', {cx: x(p.x), cy: y(p.y), r: 4.5, fill: col(k), stroke: 'var(--panel)', 'stroke-width': 2}, svg);
+      c.addEventListener('mousemove', ev => showTip(ev, `${NAMES[k]} · φ = ${p.phi}°<br>x = ${f2(p.x)}, y = ${f2(p.y)}<br>x²+y² = ${f2(p.x * p.x + p.y * p.y)}`)); c.addEventListener('mouseleave', hideTip); });
+    const first = pts[0]; txt('text', {x: x(first.x) + 8, y: y(first.y) + 4, style: `fill:var(--ink)`}, NAMES[k], svg);
+  }
+  $(target).appendChild(svg);
+}
+
+/* ---------- tables ---------- */
+function table(id, head, rows) {
+  const t = $(id);
+  t.innerHTML = '<thead><tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' + rows.map(r => '<tr>' + r.map(c => `<td${c && c.cls ? ` class="${c.cls}"` : ''}>${c && c.v !== undefined ? c.v : (c ?? '–')}</td>`).join('') + '</tr>').join('') + '</tbody>';
+}
+function msFmt(e, f = pct, unit = '') {
+  if (!e) return {v: '–'};
+  return {v: f(e.mean) + unit + (e.n > 1 ? ` <span style="color:var(--muted)">± ${f(e.std)}</span>` : ''), raw: e.mean};
+}
+function markBest(cells, higher = true) {
+  const vals = cells.map(c => c && c.raw != null ? c.raw : null);
+  const ok = vals.filter(v => v != null); if (!ok.length) return cells;
+  const b = higher ? Math.max(...ok) : Math.min(...ok);
+  return cells.map((c, i) => vals[i] === b ? Object.assign({}, c, {cls: 'best'}) : c);
+}
+
+/* ---------- render: planning ---------- */
+const TS = DATA.sets.filter(s => s.cell === 'Tshape3d_env1');
+hbars('ch-success', TS.map(s => ({label: `${s.label} · n=${s.n}`, values: Object.fromEntries(KINDS.map(k => [k, s.kinds[k] && s.kinds[k].success ? Object.assign({}, s.kinds[k].success, {min: Math.min(...s.kinds[k].success.values), max: Math.max(...s.kinds[k].success.values)}) : null]))})), {aria: 'success by test set'});
+table('tb-success', ['Test set', 'n', 'metric', 'shape', 'lie', 'collision m / s / l', 'non-conv. m / s / l'],
+  TS.map(s => [s.label, s.n, ...markBest(KINDS.map(k => msFmt(s.kinds[k] && s.kinds[k].success))),
+    KINDS.map(k => pct(s.kinds[k] && s.kinds[k].collision && s.kinds[k].collision.mean)).join(' / '),
+    KINDS.map(k => pct(s.kinds[k] && s.kinds[k].nonconv && s.kinds[k].nonconv.mean)).join(' / ')]));
+lines('ch-rotgeo', DATA.breakdown.rotgeo.labels, DATA.breakdown.rotgeo.series, {counts: DATA.breakdown.rotgeo.counts, xTitle: 'geodesic rotation between start and goal', aria: 'success vs rotation'});
+lines('ch-trans', DATA.breakdown.trans.labels, DATA.breakdown.trans.series, {counts: DATA.breakdown.trans.counts, xTitle: 'translation between start and goal', aria: 'success vs translation'});
+lines('ch-maxtheta', DATA.breakdown.maxtheta.labels, DATA.breakdown.maxtheta.series, {counts: DATA.breakdown.maxtheta.counts, xTitle: 'max(|θ start|, |θ goal|)', aria: 'success vs closeness to the cut locus'});
+table('tb-lin', ['Cases', 'metric', 'shape', 'lie'], DATA.breakdown.lin.labels.map((lab, i) => [lab + ` <span style="color:var(--muted)">n=${DATA.breakdown.lin.counts.lie[i] || DATA.breakdown.lin.counts.metric[i]}</span>`, ...markBest(KINDS.map(k => ({v: pct(DATA.breakdown.lin.series[k][i]) + '%', raw: DATA.breakdown.lin.series[k][i]})))]));
+const sig = p => p < 0.001 ? `<span class="pill sig">p ${p.toExponential(0)}</span>` : `<span class="pill${p < 0.05 ? ' sig' : ''}">p ${p.toFixed(p < 0.01 ? 3 : 2)}</span>`;
+table('tb-pairs', ['Test set', 'Pair (A vs B)', 'both', 'only A', 'only B', 'neither', 'McNemar', 'rotation A/B', 'translation A/B'],
+  DATA.pairs.map(r => [r.label, r.pair, r.both, r.onlyA, r.onlyB, r.neither, sig(r.p), f3(r.rot), f3(r.trans)]));
+table('tb-paths', ['Test set', 'rotation / geodesic m · s · l', 'translation / straight m · s · l', 'min clearance m · s · l', 'Spearman τ vs path cost m · s · l', 'τ increases along path m · s · l'],
+  TS.map(s => [s.label,
+    s.id.endsWith('transonly') ? '– (no start–goal rotation)' : KINDS.map(k => f2(s.kinds[k] && s.kinds[k].rotgeo && s.kinds[k].rotgeo.mean)).join(' · '),
+    KINDS.map(k => f2(s.kinds[k] && s.kinds[k].transr && s.kinds[k].transr.mean)).join(' · '),
+    KINDS.map(k => f3(s.kinds[k] && s.kinds[k].clear && s.kinds[k].clear.mean)).join(' · '),
+    KINDS.map(k => f2(s.kinds[k] && s.kinds[k].tauspear && s.kinds[k].tauspear.mean)).join(' · '),
+    KINDS.map(k => pct(s.kinds[k] && s.kinds[k].tauinc && s.kinds[k].tauinc.mean) + '%').join(' · ')]));
+
+/* ---------- render: field ---------- */
+const FD = DATA.field;
+lines('ch-sd', FD.dLabels, FD.marg.dist_t, {yMax: 1.2, ticks: [0, .3, .6, .9, 1.2], tickFmt: t => t.toFixed(1), valFmt: f2, ref: [{name: 'target S*d', values: FD.marg.dist_target}], xTitle: 'd / margin'});
+lines('ch-sa', FD.aLabels, FD.marg.angle_r, {yMax: 1.2, ticks: [0, .3, .6, .9, 1.2], tickFmt: t => t.toFixed(1), valFmt: f2, ref: [{name: 'target S*a', values: FD.marg.angle_target}], xTitle: 'rotational clearance (deg)'});
+$('seq-bar').style.background = `linear-gradient(90deg, ${['--seq-0', '--seq-1', '--seq-2', '--seq-3', '--seq-4', '--seq-5'].map(css).join(',')})`;
+$('div-bar').style.background = `linear-gradient(90deg, ${css('--div-neg')}, ${css('--div-mid')}, ${css('--div-pos')})`;
+const hs = $('heat-speed'), hr = $('heat-ratio');
+const tipCell = (lab, k) => (i, j, v) => `<b>${lab}</b> · ${k}<br>d/margin ${FD.dLabels[i]}, rot. clearance ${FD.aLabels[j]}°<br>value ${f2(v)} (n≈${FD.count[i][j]})`;
+for (const [key, lab] of [['Sdir_t', 'translational'], ['Sdir_r', 'rotational']]) {
+  for (const k of KINDS) if (FD.grid[k]) heat(hs, `${NAMES[k]} · ${lab}`, FD.grid[k][key], FD.dLabels, FD.aLabels, v => seqColor(v, 1.2), f2, tipCell(lab, NAMES[k]));
+  heat(hs, `target · ${lab}`, FD.target[key === 'Sdir_t' ? 'Sstar_d' : 'Sstar_a'], FD.dLabels, FD.aLabels, v => seqColor(v, 1.2), f2, tipCell(lab, 'target'));
+}
+const hg = $('heat-grad');
+for (const [key, lab, tgt] of [['S_t', 'translational 1/|∇pτ|', 'Sstar_d'], ['S_rw', 'rotational 1/|∇ωτ|', 'Sstar_a']]) {
+  for (const k of KINDS) if (FD.grid[k] && FD.grid[k][key]) heat(hg, `${NAMES[k]} · ${lab}`, FD.grid[k][key], FD.dLabels, FD.aLabels, v => seqColor(v, 1.2), f2, tipCell(lab, NAMES[k]));
+  heat(hg, `target · ${tgt === 'Sstar_d' ? 'S*d' : 'S*a'}`, FD.target[tgt], FD.dLabels, FD.aLabels, v => seqColor(v, 1.2), f2, tipCell(lab, 'target'));
+}
+for (const [key, lab] of [['logratio_dir_t', 'translational'], ['logratio_dir_r', 'rotational']]) {
+  for (const k of KINDS) if (FD.grid[k]) heat(hr, `${NAMES[k]} · ${lab}`, FD.grid[k][key], FD.dLabels, FD.aLabels, v => divColor(v, 2), v => (v > 0 ? '+' : '') + v.toFixed(1), tipCell(lab + ' log ratio', NAMES[k]));
+}
+table('tb-calib', ['Field statistic', 'metric', 'shape', 'lie'], DATA.calib.map(r => [r.label, ...markBest(KINDS.map(k => msFmt(r.vals[k], r.fmt === 'pct' ? pct : (r.fmt === 'f3' ? f3 : f2))), r.higher)]));
+
+/* ---------- render: metric identification ---------- */
+dual('ch-dual');
+table('tb-metric', ['Local / free-space metric', 'metric', 'shape', 'lie'], DATA.metricRows.map(r => [r.label, ...KINDS.map(k => msFmt(r.vals[k], r.fmt === 'pct' ? pct : (r.fmt === 'f3' ? f3 : f2)))]));
+
+/* ---------- render: rotation ---------- */
+table('tb-rot', ['Rotation test', 'metric', 'shape', 'lie'], DATA.rotRows.map(r => [r.label, ...KINDS.map(k => msFmt(r.vals[k], r.fmt === 'pct' ? pct : (r.fmt === 'f3' ? f3 : f2)))]));
+lines('ch-theta', FD.thetaLabels, FD.theta, {yMin: -1.5, yMax: 1.5, ticks: [-1.5, -1, -.5, 0, .5, 1, 1.5], tickFmt: t => (t > 0 ? '+' : '') + t.toFixed(1), valFmt: v => (v > 0 ? '+' : '') + v.toFixed(2), xTitle: '|θ| of the configuration'});
+
+/* ---------- render: other cells, RNL ---------- */
+table('tb-cells', ['Environment · test set', 'n', 'metric', 'shape', 'lie'], DATA.sets.filter(s => s.cell !== 'Tshape3d_env1').map(s => [s.label, s.n, ...markBest(KINDS.map(k => msFmt(s.kinds[k] && s.kinds[k].success)))]));
+$('cells-note').textContent = DATA.cellsNote;
+table('tb-cellfield', ['Environment · field statistic', 'metric', 'shape', 'lie'], (DATA.cellField || []).map(r => [r.label, ...KINDS.map(k => msFmt(r.vals[k], r.fmt === 'pct' ? pct : (r.fmt === 'f3' ? f3 : f2)))]));
+$('rnl-note').innerHTML = DATA.rnl.note;
+table('tb-rnl', DATA.rnl.head, DATA.rnl.rows);
+table('tb-rnl-suite', DATA.rnl.suiteHead, DATA.rnl.suiteRows);
+</script>

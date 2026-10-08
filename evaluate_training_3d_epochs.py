@@ -53,7 +53,7 @@ sys.path.insert(0, '.')
 
 # Force the checkpoint: evaluate_training_3d.py hardcodes `pt` then calls
 # womodel.load(pt); make load() ignore that and load the epoch snapshot instead.
-from models.metric import model_train_metric as md
+from models.shape_metric import model_train_metric as md
 _orig_load = md.Model.load
 def _forced_load(self, filepath=None):
     # The target script prints its own (hardcoded) checkpoint path; make the log

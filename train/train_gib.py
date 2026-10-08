@@ -1,6 +1,6 @@
 import sys
 sys.path.append('.')
-from models.metric import model_train_metric as md
+from models.shape_metric import model_train_metric as md
 from os import path
 from glob import glob
 

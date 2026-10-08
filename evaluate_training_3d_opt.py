@@ -71,7 +71,7 @@ from glob import glob
 import numpy as np
 import torch
 
-from models.metric import model_train_metric as md
+from models.shape_metric import model_train_metric as md
 
 DIM = 6
 

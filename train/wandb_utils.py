@@ -2,7 +2,7 @@
 
 Both ``train_2dshape.py`` and ``train_3dshape.py`` (and any other trainer) use
 these so experiment tracking is configured the same way everywhere.  The actual
-per-epoch ``wandb.log`` calls live in ``models/metric/model_train_metric.py`` and
+per-epoch ``wandb.log`` calls live in ``models/<package>/model_train_metric.py`` and
 are guarded so they are a no-op unless a run has been started here.
 
 Typical use in a trainer::

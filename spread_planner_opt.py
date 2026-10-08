@@ -46,7 +46,7 @@ import os, json, argparse, time, statistics
 import numpy as np
 import torch
 from scipy.spatial.transform import Rotation
-from models.metric import model_train_metric as md
+from models.shape_metric import model_train_metric as md
 
 DIM = 6
 PLANAR_FREE_DIMS = (0, 1, 5)     # preprocess_obj.py --2d frees x, y, rz only

@@ -28,7 +28,7 @@ import os, json, argparse, contextlib, io, time
 import numpy as np
 import torch
 import igl
-from models.metric import model_train_metric as md
+from models.shape_metric import model_train_metric as md
 from dataprocessing.preprocess_obj import load_obj, _rotvec_to_matrix_np, sample_surface_points
 
 _SDF_SIGN = igl.SignedDistanceType.SIGNED_DISTANCE_TYPE_FAST_WINDING_NUMBER
