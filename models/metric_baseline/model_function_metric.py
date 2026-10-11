@@ -51,6 +51,11 @@ class Function():
         #self.kdtree, self.v_obs, self.n_obs = self.pc_kdtree(input_file)
 
         self.alpha = 1.025
+        # TD and normal-alignment loss weights. The original metric NTFields uses
+        # 1e-3 for both; metric_baseline switches them off unless the trainer sets them.
+        self.td_weight = 0.0
+        self.normal_weight = 0.0
+        self.last_terms = {}
         limit = 0.5
         self.margin = limit/15.0
         self.offset = self.margin/10.0 
@@ -96,7 +101,7 @@ class Function():
         S0 = torch.einsum('ij,ij->i', DT0, DT0)
         S1 = torch.einsum('ij,ij->i', DT1, DT1)
 
-        td_weight = 0  # metric_baseline: TD loss off (original 1e-3) #np.clip(1e-2*(1-(epoch)/300.), a_min=1e-3, a_max=1e-2) #2e-3
+        td_weight = self.td_weight  # original 1e-3 #np.clip(1e-2*(1-(epoch)/300.), a_min=1e-3, a_max=1e-2) #2e-3
         with torch.no_grad():
 
             length0 = (0.03)/(Yobs[:,0]).unsqueeze(1)#5*torch.rand(Yobs.shape[0],1).cuda()
@@ -170,7 +175,7 @@ class Function():
         T = tau[:,0] #* torch.sqrt(T0)
         diff = loss0 + loss1 
 
-        normal_weight = 0  # metric_baseline: normal loss off (original 1e-3)
+        normal_weight = self.normal_weight  # original 1e-3
 
         normal0 = normal[:,:self.dim]
         normal1 = normal[:,self.dim:]
@@ -192,6 +197,10 @@ class Function():
         para = 0.5#max(0.5-epoch*0.001,0.5)
         #
         loss_n = (torch.sum((diff+n_loss +tau_loss)*torch.exp(-0.5*T)))/Yobs.shape[0]#*torch.exp(-para*T)
+        with torch.no_grad():
+            wT = torch.exp(-0.5*T)/Yobs.shape[0]
+            self.last_terms = {'Eik': torch.sum(diff*wT).item(), 'Normal': torch.sum(n_loss*wT).item(),
+                               'TD': torch.sum(tau_loss*wT).item()}
         
         loss = beta*loss_n #+ 1e-4*(reg_tau)
         

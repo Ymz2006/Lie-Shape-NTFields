@@ -107,7 +107,14 @@ def rhombus_residual(dT_dp, grad_w, St, Sr, p=float('inf'), eps=1e-8):
     For constant speeds the exact solution is T = |p - p_g|/St + theta/Sr, on
     which both blocks are tight (N = 1 with either term).  A finite ``p`` takes
     the p-norm of the two terms instead of the max -- a rhombus with rounded
-    corners (primal norm l_{p/(p-1)}); p = 2 is lie_metric's ellipse.
+    corners (primal norm l_{p/(p-1)}); p = 2 is lie_metric's ellipse.  p = 1 is
+    the opposite corner case, the block sum
+
+        N = St |grad_v T| + Sr |grad_w T| = 1,
+
+    dual to the max cost dt = max(|dv|/St, |dw|/Sr) (a box: translating and
+    rotating at once costs no extra time); its constant-speed solution is
+    T = max(|p - p_g|/St, theta/Sr).
     |grad_v T| = |dT/dp| since the body translation block is R^T dT/dp."""
     a = St * torch.sqrt((dT_dp**2).sum(-1) + eps)
     b = Sr * torch.sqrt((grad_w**2).sum(-1) + eps)

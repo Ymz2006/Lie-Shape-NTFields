@@ -133,7 +133,11 @@ class Function():
         # loss untouched.  Model.train() overrides it from Params['Training']['RNL'].
         self.rnl = dict(rnl.DEFAULTS)
         self.rnl_stats = {}
-    
+        # Residual-to-loss mapping: 'N' = (N-1)^2, 'sqrtN' = (sqrt(N)-1)^2 (the
+        # metric_baseline mapping).  Model.train() overrides it from
+        # Params['Training']['Residual'].
+        self.residual = 'N'
+
     def gradient(self, y, x, create_graph=True):                                                               
                                                                                   
         grad_y = torch.ones_like(y)                                                                 
@@ -169,7 +173,10 @@ class Function():
             grad_v = dtau[:, o:o+half_dim]
             grad_w = lie_rot_grad(Xp[:, o+half_dim:o+self.dim], dtau[:, o+half_dim:o+self.dim])
             N = aniso_residual(grad_v, grad_w, speed_dist[:, e], speed_angle[:, e])
-            diff_4 = diff_4 + (N - 1)**2
+            if self.residual == 'sqrtN':
+                diff_4 = diff_4 + (torch.sqrt(N) - 1)**2
+            else:
+                diff_4 = diff_4 + (N - 1)**2
 
         loss_weight = 1e-2
         diff_4 = diff_4 * loss_weight

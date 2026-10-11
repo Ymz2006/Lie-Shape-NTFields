@@ -123,6 +123,10 @@ class Model():
         # 'two_route' (model_network_metric: separate trans/rot encoders) or
         # 'original' (model_network_original: single-route metric NTFields).
         self.Params['Network']['Architecture'] = 'two_route'
+        # two_route only: rotation-route input, see model_network_metric.ROT_INPUTS.
+        self.Params['Network']['Rotation input'] = 'chart'
+        # rot6 / quat / quat_sheets inputs: std of their random Fourier frequencies (initial draw only).
+        self.Params['Network']['Rotation freq'] = 2.0
 
         self.Params['Training'] = {}
         self.Params['Training']['Number of sample points'] = 2e5
@@ -137,6 +141,8 @@ class Model():
         self.Params['Training']['Use Scheduler (bool)'] = False
         # Relative normal loss (models/rnl.py); mode 'none' = off.
         self.Params['Training']['RNL'] = dict(rnl.DEFAULTS)
+        # Eikonal residual mapping: 'N' = (N-1)^2, 'sqrtN' = (sqrt(N)-1)^2.
+        self.Params['Training']['Residual'] = 'N'
 
         # Parameters to alter during training
         self.total_train_loss = []
@@ -181,7 +187,8 @@ class Model():
         freq_bands = 0.5**(torch.linspace(0, 8, 128)) 
 
 
-        self.network = self._network_module().NN(self.Params['Device'],self.dim, self.B)
+        self.network = self._make_network()
+        print('rotation input: {}'.format(self.Params['Network']['Rotation input']))
         self.network.apply(self.network.init_weights)
 
         self.network.to(self.Params['Device'])
@@ -189,7 +196,9 @@ class Model():
 
         self.function = model_function.Function(self.folder, self.Params['Device'],self.network,self.dim,self.Params['DataPath'])
         self.function.rnl.update(self.Params['Training']['RNL'])
+        self.function.residual = self.Params['Training']['Residual']
         print('RNL config: {}'.format(self.function.rnl))
+        print('Eikonal residual mapping: {}'.format(self.function.residual))
 
         print('train')
         
@@ -446,6 +455,22 @@ class Model():
             return model_network_original
         return model_network
 
+    def _make_network(self, checkpoint=None):
+        '''
+            Build the network for the configured (or, given a checkpoint dict, the
+            saved) architecture and rotation input.
+        '''
+        if checkpoint is not None:
+            self.Params['Network']['Rotation input'] = checkpoint.get('rot_input', 'chart')
+        module = self._network_module(None if checkpoint is None else checkpoint['model_state_dict'])
+        rot_input = self.Params['Network']['Rotation input']
+        if module is model_network_original:
+            if rot_input != 'chart':
+                raise ValueError('Rotation input {} needs the two_route network'.format(rot_input))
+            return module.NN(self.Params['Device'], self.dim, self.B)
+        return module.NN(self.Params['Device'], self.dim, self.B, rot_input=rot_input,
+                         rot_freq=self.Params['Network']['Rotation freq'])
+
     def save(self, epoch='', val_loss=''):
         '''
             Saving a instance of the model
@@ -454,6 +479,7 @@ class Model():
                     'model_state_dict': self.network.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'B_state_dict':self.B,
+                    'rot_input': self.Params['Network']['Rotation input'],
                     'train_loss': self.total_train_loss,
                     'val_loss': self.total_val_loss}, '{}/Model_Epoch_{}_ValLoss_{:.6e}.pt'.format(self.folder, str(epoch).zfill(5), val_loss))
 
@@ -467,6 +493,7 @@ class Model():
                 'model_state_dict': self.network.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
                 'B_state_dict': self.B,
+                'rot_input': self.Params['Network']['Rotation input'],
                 'train_loss': self.total_train_loss,
                 'val_loss': self.total_val_loss}
         torch.save(ckpt, '{}/latest.pt'.format(self.folder))
@@ -479,7 +506,7 @@ class Model():
             filepath, map_location=torch.device(self.Params['Device']))
         self.B = checkpoint['B_state_dict']
 
-        self.network = self._network_module(checkpoint['model_state_dict']).NN(self.Params['Device'],self.dim,self.B)
+        self.network = self._make_network(checkpoint)
 
         self.network.load_state_dict(checkpoint['model_state_dict'], strict=True)
         self.network.to(torch.device(self.Params['Device']))
@@ -497,7 +524,7 @@ class Model():
         self.B = state_dict['B_state_dict'].to(self.Params['Device'])
 
         # Recreate the network with the loaded B and copy parameters
-        self.network = self._network_module(state_dict['model_state_dict']).NN(self.Params['Device'], self.dim, self.B)
+        self.network = self._make_network(state_dict)
         self.network.load_state_dict(state_dict['model_state_dict'], strict=True)
         self.network.to(torch.device(self.Params['Device']))
         self.network.float()

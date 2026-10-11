@@ -26,7 +26,9 @@ MARGIN = 0.05            # training margin (meta.json); S*_dist saturates at d =
 TRAIN_OFFSET = 0.001     # training offset (lower clip of the distance ratio)
 ANGLE_MAX = 1.0 / 6.0    # training loop: speed_angle (angle / pi) saturates at 30 deg
 
-MODEL_PKGS = {'metric': 'metric_baseline', 'shape': 'shape_metric', 'lie': 'lie_metric'}
+MODEL_PKGS = {'metric': 'metric_baseline', 'shape': 'shape_metric', 'lie': 'lie_metric',
+              'twist': 'lie_twist', 'lie_rnl': 'lie_metric_rnl', 'rhombus': 'metric_lie_rhombus',
+              'lie_iso': 'lie_isotropic'}
 
 
 # --------------------------------------------------------------------------- geometry
@@ -158,7 +160,7 @@ def body_rot_grad(r, g_r):
 
 # --------------------------------------------------------------------------- models
 def load_model(kind, checkpoint, device):
-    """kind in {'metric','shape','lie'} -> (Model, Function)."""
+    """kind in MODEL_PKGS -> (Model, Function)."""
     pkg = MODEL_PKGS[kind]
     md = importlib.import_module('models.{}.model_train_metric'.format(pkg))
     m = md.Model('/tmp/analysis_model', 'datasets/3dshape/Tshape3d_env1/', DIM, [0.0] * DIM, device=device)

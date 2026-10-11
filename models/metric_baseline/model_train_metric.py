@@ -123,6 +123,9 @@ class Model():
         # speed goes negative and the sqrt in Function.Loss returns NaN.
         self.Params['Training']['Alpha'] = 1.0  # original 1.025 turns the warped 3-D shape speeds negative -> NaN (see baselines README)
         self.Params['Training']['Use Scheduler (bool)'] = False
+        # Original metric NTFields: 1e-3 each. metric_baseline trains with both off.
+        self.Params['Training']['TD weight'] = 0.0
+        self.Params['Training']['Normal weight'] = 0.0
 
         # Parameters to alter during training
         self.total_train_loss = []
@@ -178,6 +181,8 @@ class Model():
         # Defining the optimization scheme
 
         self.function = model_function.Function(self.folder, self.Params['Device'],self.network,self.dim)
+        self.function.td_weight = self.Params['Training']['TD weight']
+        self.function.normal_weight = self.Params['Training']['Normal weight']
 
         print('train')
         
@@ -290,6 +295,7 @@ class Model():
             while True:
                 total_train_loss = 0
                 total_diff = 0
+                terms = {}
                 #for i in range(10):
                 ii = 0
                 for i, wholedata in enumerate(dataloader,0):#train_loader_wei,dataloader
@@ -327,6 +333,8 @@ class Model():
 
                     total_train_loss += loss_value.item()
                     total_diff += loss_n.item()
+                    for k, v in self.function.last_terms.items():
+                        terms[k] = terms.get(k, 0.0) + v/4
                     # total_train_loss = 0
                     # total_diff = 0
                     # def closure():
@@ -399,7 +407,9 @@ class Model():
                     #print("Epoch = {} -- Training loss = {:.4e} -- Validation loss = {:.4e}".format(
                     #    epoch, total_train_loss, total_val_loss))
                     print("Epoch = {} -- Loss = {:.4e} -- Alpha = {:.4e}".format(
-                        epoch, total_diff, alpha))
+                        epoch, total_diff, alpha) + ''.join(
+                        ' -- {} = {:.4e}'.format(k, v) for k, v in terms.items()
+                        if self.function.td_weight or self.function.normal_weight))
 
             if (epoch % self.Params['Training']['Save Every * Epoch'] == 0) or (epoch == self.Params['Training']['Number of Epochs']) or (epoch == 1):
                 # The travel-time plot peaks at ~1.7 GB of GPU memory; NTF_NO_PLOT=1

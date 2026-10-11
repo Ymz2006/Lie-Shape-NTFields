@@ -187,3 +187,53 @@ RRT-verified test sets are built (in the `ntrl_mpnet` env, needs OMPL) with
 - `datasets/3dshape/Tshape3d_2denv4` was originally called `Tshape3d_env4` (renamed
   2026-09-10); its old test set / results carry a `_legacy` suffix.
 - `*/Tshape3d_env1_aug18` is a pre-README 3-D T-shape run (test set at `--offset 0.01`).
+
+## MPPI with unit Lie tangents
+
+`controllers/lie_mppi.py` samples unit body-frame tangents `(v, w)` at each
+current pose, where `w` is measured in turns like the model's rotation inputs.
+For the normalized product metric
+`d(g,h)^2 = ||p_g-p_h||^2 + (angle(R_g^T R_h)/(2*pi))^2`, the Riemannian
+exponential is
+
+```text
+p_next = p + t R v
+R_next = R exp(2*pi*t*[w]x)
+```
+
+Every unit proposal therefore has geodesic distance **t = step = 0.015**.
+This uses the Riemannian exponential, which differs from the SE(3) matrix
+exponential; see [the geodesic derivation, equation (4)](https://doi.org/10.1007/s00022-025-00754-9).
+All five horizon steps compose from their own current pose. The weighted mean
+control is formed in the current tangent space and executed with the same map;
+its length is at most the sampling radius. Convergence uses this pose distance
+with the original 0.01 threshold. The sampling metric fixes the displacement
+budget; checkpoint speeds and metrics still influence the learned costs.
+
+The original evaluator defaults to `--sampler chart`. Select the new controller
+with `--sampler lie`, or use the dedicated entry point (default model: `lie_metric`):
+
+```bash
+python evaluate_training_3d_lie_mppi.py --models lie_metric \
+  --checkpoint <checkpoint.pt> --dataPath testing_data/3dshape/Tshape3d_env1 \
+  --out results/lie_mppi/<new-run> --seed 0 --no-viser
+```
+
+The same controller is available as `analysis/plan_eval.py --planner mppi_lie`.
+To rerun both samplers with matched group convergence and compare to existing logs:
+
+```bash
+python analysis/compare_lie_mppi.py \
+  --historical results/compare/plan/lie_rsqrtN_s1_g/Tshape3d_env1.json \
+  --out results/lie_mppi_comparison/<new-run> --device cuda:0
+python -m unittest discover -s tests -v
+```
+
+The comparison writes per-case JSON, console logs, input/source hashes and
+`REPORT.md` in a new directory. Use `--device cpu` for CPU execution. Full runs
+use all frozen cases; `--cases N` limits a smoke comparison. Collision checks
+retain the existing waypoint protocol.
+
+The completed 1,000-case comparison scored 67.6% for Lie MPPI and 68.0% for
+the fresh original controller on the same checkpoint and planning seed.
+See [implementation, validation and full results](LIE_MPPI_RESULTS.md).

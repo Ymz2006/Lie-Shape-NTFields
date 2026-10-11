@@ -155,6 +155,11 @@ parser.add_argument('--checkpoint', default=None,
 parser.add_argument('--no-viser', action='store_true',
                     help='Skip launching the interactive viser viewer (still '
                          'writes success_rate.txt and the summary HTML plots).')
+parser.add_argument('--sampler', choices=['chart', 'lie'], default='chart',
+                    help='chart: original R6 sampler; lie: unit body tangents '
+                         'mapped with the Riemannian exponential at t=step.')
+parser.add_argument('--seed', type=int, default=None,
+                    help='Seed the collision cloud and MPPI noise for comparisons.')
 parser.add_argument('--verbose', '-v', action='store_true',
                     help='Print the full diagnostic log: per-case PASS/FAIL lines, '
                          'endpoint-filter and timing lines, the failure breakdowns '
@@ -164,6 +169,13 @@ parser.add_argument('--verbose', '-v', action='store_true',
                          'artifact (success_rate.txt, the summary HTML plots) is '
                          'written either way.')
 args = parser.parse_args()
+
+if args.seed is not None:
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+
+if args.sampler == 'lie':
+    from controllers.lie_mppi import mppi_batched as lie_mppi_batched, pose_distance
 
 md = importlib.import_module('models.{}.model_train_metric'.format(args.models))
 
@@ -340,6 +352,14 @@ def MPPI_batched(womodel, XP, dim, steps=200,
                       the goal but could not stick the landing" (min_dis just
                       above the 0.01 ball) from "never got near it".
     """
+    if args.sampler == 'lie':
+        if dim != 6:
+            raise ValueError('Lie MPPI requires normalized SE(3) configurations')
+        return lie_mppi_batched(
+            womodel.function.TravelTimes, XP, steps=steps,
+            step=STEP if step is None else step, temperature=args.temp,
+            taper=TAPER if taper is None else taper,
+            planar=PLANAR if planar is None else planar)
     B = XP.shape[0]
     sample_num = 50
     horizon = 5
@@ -575,7 +595,8 @@ def _candidate_cost(womodel, XP_tmp, cur, dim, local_step, all_horizon, local_w,
         local = womodel.function.TravelTimes(
             torch.cat([src, cand], dim=3).reshape(-1, dim * 2)).reshape(B, S, K)
         # Per-unit-length slowness, not raw travel time -- see the docstring.
-        seg = torch.norm(cand - src, dim=3).clamp(min=1e-6)          # (B, S, K)
+        seg = (pose_distance(src, cand) if args.sampler == 'lie'
+               else torch.norm(cand - src, dim=3)).clamp(min=1e-6)
         f = f + local_w * (local / seg)
 
     if all_horizon:
@@ -618,6 +639,18 @@ def MPPI_alternating_batched(womodel, XP, dim, steps=200, local_step=False,
 
     Returns the same 4-tuple as ``MPPI_batched``.
     """
+    if args.sampler == 'lie':
+        if dim != 6:
+            raise ValueError('Lie MPPI requires normalized SE(3) configurations')
+        cost_fn = lambda candidates, mover: _candidate_cost(
+            womodel, candidates, mover, dim, local_step, all_horizon,
+            LOCAL_W if local_w is None else local_w, indep)
+        return lie_mppi_batched(
+            womodel.function.TravelTimes, XP, steps=steps,
+            step=STEP if step is None else step, temperature=args.temp,
+            taper=TAPER if taper is None else taper,
+            planar=PLANAR if planar is None else planar,
+            alternating=True, candidate_cost=cost_fn)
     B = XP.shape[0]
     sample_num = 50
     horizon = 5
@@ -1656,11 +1689,16 @@ summary_lines = [
     f"checkpoint                   : {pt}",
     f"test_cases                   : {n_cases}",
     f"mppi_momentum                : {MOMENTUM}",
+    "mppi_effective_momentum      : 0   [reference controller forces momentum=0]",
     f"mppi_step                    : {STEP}   [convergence ball is 0.01]",
     f"mppi_taper                   : {TAPER}",
     f"mppi_temp                    : {args.temp}   [softmax(-temp * cost); default 50]",
     f"mppi_planar (--2d)           : {PLANAR}"
     + (f"   [free dims {PLANAR_FREE_DIMS} = x, y, rz]" if PLANAR else ""),
+    f"mppi_sampler                : {args.sampler}",
+    f"mppi_seed                   : {args.seed}",
+    f"mppi_t                      : {STEP if args.sampler == 'lie' else 'n/a'}",
+    f"mppi_distance               : {'normalized product geodesic' if args.sampler == 'lie' else 'chart Euclidean'}",
     f"no_conv_min_dis_median       : "
     + (f"{np.median(_md):.4f}" if _md.size else "n/a"),
     f"no_conv_min_dis_within_2ball : "

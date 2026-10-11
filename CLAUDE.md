@@ -66,7 +66,9 @@ Each task package is a near-copy of the same three files:
   taken as the body-frame Lie gradient (`lie_rot_grad`, see `anisotropic_speed_field_implementation.pdf`).
 - `models/metric_baseline/` — the original metric NTFields (single-route network, isotropic Eikonal
   on the combined `speed.npy`), copied from `ntrlshape/.../baselines/ntrl-demo/models/metric` with the
-  TD and normal losses switched off. Select a package with `--models` on `train/train_3dshape.py`
+  TD and normal losses switched off by default (`--td-weight 1e-3 --normal-weight 1e-3` restores the original
+  weights; the alpha speed stretch stays 1.0, since the original 1.025 NaNs on the 3-D shape speeds).
+  Select a package with `--models` on `train/train_3dshape.py`
   and `evaluate_training_3d_batched.py`.
 - `models/lie_metric_6s/` — `metric_baseline`'s network and trainer with six independent speeds:
   `sqrt(g^T diag(S_x^2, S_y^2, S_z^2, S_r1^2, S_r2^2, S_r3^2) g) = 1` per endpoint, where
@@ -79,7 +81,39 @@ Each task package is a near-copy of the same three files:
   `dt = da/S_dist + db/S_angle` (da = translation step length, db = rotation step angle; a rhombus
   instead of the ellipse `sqrt(da^2/S_dist^2 + db^2/S_angle^2)`). Its Eikonal equation is the dual
   norm `max(S_dist |grad_v tau|, S_angle |grad_w tau|) = 1`, mapped `1e-2*(sqrt(N)-1)^2`.
-  `--dual-p` replaces the max with a p-norm (`p = 2` is `lie_metric`).
+  `--dual-p` replaces the max with a p-norm (`p = 2` is `lie_metric`; `p = 1` is the block sum
+  `S_dist |grad_v tau| + S_angle |grad_w tau| = 1`, dual to the max cost `dt = max(da/S_dist, db/S_angle)`).
+  Evaluate with `analysis/plan_eval.py --kind rhombus`.
+- `models/lie_twist/` — `lie_metric` re-derived from body-twist optimal control (`image (7).png`):
+  `sqrt(p_b^T G(g)^{-1} p_b) = 1/S` with the full left-trivialized gradient `p_b = (R^T dtau/dp,
+  lie_rot_grad)` and `G(g) = D^{-1} G0 D^{-1}`, `D = diag(S_dist I, S_angle I)`. `G0` is the shape's
+  twist metric (mean squared surface-point speed, built from the mesh named in the dataset's
+  `meta.json`; `G0 = I` is `lie_metric`). `--twist-metric` picks `shape` / `shape_scaled` / `shape_max`
+  (per-axis worst-case point speed) / `identity`; `--residual` picks `(sqrt(N)-1)^2` (default) or
+  `(N-1)^2` (also on `lie_metric`, default `N`). `--twist-speed dist|combined` switches to the image's
+  scalar-speed form `S * sqrt(p_b^T G0^{-1} p_b) = 1` with constant `G0` (best variants: `combined`);
+  `--rot-input matrix` feeds `R(rotvec)` features so tau is a function on SO(3); `--grad chart` is the
+  coordinate-gradient control; `--rot-scale k` scales the rotation unit.
+- `models/lie_metric_rnl/` — `lie_metric` with `(sqrt(N)-1)^2` as default plus the relative normal loss on x0
+  (`rnl_lie.py`), using the Lie-group probe curves of `RNL_Lie_Group_Probes.pdf` (`models/rnl.py::make_probes`).
+  The RNL speed is the one the anisotropic Eikonal pins, `S_c(q) = Sc*(x0) / N_x0(grad tau(q))` (`--rnl-speed aniso`;
+  `block` = the old `1/|grad_block tau|`). S(x0) is detached (`--rnl-anchor`), and the slope threshold is the target
+  field's own slope along the probe (`--rnl-rho-mode analytic`; constant rho is infeasible for about half the band).
+  `--rnl-balance value` (default) is the Shape-NTFields loss-value cap. It plans best, but it needs the RNL ramped in
+  from a trained network (the default ramp starts at epoch 1000); switched on early it stalls the accept/reject
+  loop. `--rnl-balance grad` (PCGrad projection plus a norm cap of `--rnl-cap` x |g_eik|) never stalls and keeps
+  lie_metric's Eikonal fit, for a smaller gain. Epochs are accepted on the Eikonal loss alone (`--accept-on`).
+  `--init-checkpoint` continues a `lie_metric` run from epoch 1000, where the RNL ramp starts. Evaluate with `--kind lie_rnl`.
+- Planner variants for twist models live in `analysis/plan_eval.py` (not the batched evaluator):
+  `--group-conv` (converge on SE(3), not in the chart), `--planner mppi_twist` (MPPI sampling body twists
+  from the `G0` control set) and `--planner twist` (optimal-twist descent). The evaluator's MPPI samples
+  isotropically in the chart, i.e. assumes `G0 = I`. `analysis/metric_probe.py` reads a field's learned
+  free-space cost per body axis.
+- `models/lie_isotropic/` — `lie_metric` with one isotropic speed, the translational clearance:
+  `S_dist * sqrt(|grad_v tau|^2 + |grad_w tau|^2) = 1` on the same body-frame Lie gradient
+  (`speed_angle` is ignored), mapped `1e-2*(sqrt(N)-1)^2` (default). `--grad chart` replaces the
+  Lie rotation block with the coordinate gradient `dtau/d(rotvec/2pi)` (the non-Lie control). Evaluate
+  with `analysis/plan_eval.py --kind lie_iso`.
 - `models/metric_arm/` — the UR5.
 
 **Changes to the core algorithm usually need to be mirrored across all three packages.**
@@ -145,39 +179,37 @@ W&B is **on by default**. Shared helpers in `train/wandb_utils.py` (`add_wandb_a
 calls in `model_train_metric.py` are guarded so they no-op without a run. Disable with `--no-wandb`.
 Common overrides: `--epochs`, `--batch-size`, `--lr`, `--data`, `--set KEY=VALUE`.
 
-## Experiment tree (`research_tree/`): keep it current
+## Experiment tree (`research_tree/`): edit ONLY when the user asks
 
-`research_tree/tree.yaml` records every model variant tried, including failures. It is a flat
-list of nodes linked by `parent`, with one root per package in `models/` (`metric_baseline`,
-`shape_metric`, `lie_metric`, `lie_metric_6s`, `metric_lie_rhombus`). `python research_tree/render.py` validates it
-and rebuilds `research_tree/tree.html`, a self-contained page with a diagram, an outline, and a
-details panel for each node. The field list and status meanings are in the header comment of
-`tree.yaml`.
+`research_tree/tree.yaml` is a curated record of the model variants the user chose to keep. It is
+a flat list of nodes linked by `parent`, one root per tracked package (currently `metric_baseline`,
+`lie_metric`, `lie_metric_6s`, `lie_metric_rnl`). `python3 research_tree/render.py` validates it and
+rebuilds `research_tree/tree.html` (diagram, outline, details panel per node); `--text` prints it in
+the terminal (`--root <id>` for one subtree). The field list and status meanings are in the header
+comment of `tree.yaml`. The tree was pruned on 2026-10-10; the full pre-prune tree (including
+`shape_metric`, `metric_lie_rhombus`, `lie_twist` and many dropped branches) is kept in
+`research_tree/archive/tree_2026-10-10_before_prune.yaml` for reference.
 
-- **Session start:** before proposing or running a model change, read the tree with
-  `python research_tree/render.py --text` (add `--root <id>` for one subtree). This avoids
-  repeating dead ends; RNL on `lie_metric`, for example, failed at every setting.
-- **Update it in the same session, without being asked,** whenever:
-  - you create or propose a variant (loss, residual, weighting, architecture, speeds,
-    preprocessing that feeds a model, or a hyperparameter sweep). Add a node with status
-    `running` if training started, or `idea` if it is only proposed.
-  - a training or evaluation run finishes. Fill in `fwd` / `coll` / `result` and set the status
-    to `win`, `mixed` or `fail`.
-  - an analysis changes how an existing result should be read. Edit that node's `notes`.
-  - a run is abandoned. Set it to `dropped` and say why in `result`.
-
-  Then run `python research_tree/render.py`, fix any validation errors, and mention the tree
-  change in your reply.
-- **Rules:**
-  - Never delete a node; mark it `fail` or `dropped` instead.
-  - `parent` is the variant this run actually changed, ideally one change per node. A new
-    package under `models/` gets a new root.
+- **IMPORTANT: Do not add, edit, re-status or delete tree nodes on your own initiative.** Change
+  `tree.yaml` only when the user explicitly asks for that change (e.g. "add this run to the tree",
+  "update the node with the new numbers"). This holds even when you start a new variant, a run
+  finishes, or an analysis changes how a result should be read: at most, mention in your reply
+  that the tree could be updated and let the user decide.
+- Reading the tree is fine and encouraged: before proposing a model change, check
+  `python3 research_tree/render.py --text` (and the archive) to avoid repeating dead ends.
+- **Viewing:** the repo lives on a remote server, so use `python3 research_tree/serve.py`
+  (default port 8765, bound to localhost). It re-renders on every page load and prints the
+  `ssh -N -L 8765:localhost:8765 user@host` tunnel command to open it from a laptop.
+- **When the user does ask for an edit:**
+  - `parent` is the variant this run actually changed, ideally one change per node.
   - `fwd` is only the headline metric defined in `meta.metric`: Tshape3d_env1, standard 1k set,
     forward-MPPI success %. Read it from the `regular/forward` line of
     `results/output_3d/<run>/success_rate.txt`. Put other seeds, sets, envs and eval scripts in
     `result`, and say there when a number comes from a different evaluation.
   - Fill `runs` (the `Experiments/` run folder and the `results/` output) and `code` (the files
     that implement the change), so every node points back to its artifacts.
+  - Then run `python3 research_tree/render.py`, fix any validation errors, and mention the change
+    in your reply.
 
 ## Conventions
 
