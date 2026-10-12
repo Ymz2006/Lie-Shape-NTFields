@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lie Eikonal · Five-seed reproduction artifact</title>
+<style>
+@@STYLE@@
+:root{--ink:#192532;--muted:#5b6777;--accent:#126e67;--line:#dbe2e8}
+body{color:var(--ink);background:#eef2f5}main{max-width:1180px;padding:36px 24px}
+h1{font-size:clamp(28px,4vw,46px);line-height:1.12;margin:14px 0 18px;max-width:850px}
+.eyebrow{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.intro{font-size:18px;max-width:830px;color:var(--muted)}
+.badge{display:inline-block;background:#dcefe7;color:#225b44;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;margin-bottom:10px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:28px 0}
+.card,.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px}
+.card strong{font-size:29px;display:block;line-height:1.3}.card span{font-size:13px;color:var(--muted)}
+.panel h2{margin-top:0}.controls{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
+select{font:14px system-ui;background:white;border:1px solid #bdcbd4;border-radius:6px;padding:9px;min-width:150px}
+.chart-wrap{position:relative}canvas{display:block;width:100%;height:390px}
+.note{font-size:13px;color:var(--muted)}.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;margin:12px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.tooltip{position:absolute;pointer-events:none;display:none;max-width:245px;padding:10px 13px;border-radius:8px;background:#192532;color:white;font-size:12px;box-shadow:0 4px 18px #0002;z-index:2}
+.insight{padding:14px 18px;border-left:3px solid var(--accent);background:#eff7f5;border-radius:4px;margin:18px 0}
+details{margin-top:26px;background:white;border:1px solid var(--line);border-radius:12px;padding:20px}
+summary{font-size:18px;cursor:pointer;font-weight:600}.full-report{padding-top:20px}.downloads{line-height:2.2;margin:20px 0;overflow-wrap:anywhere}
+.metric-table{margin-top:12px}.metric-table td,.metric-table th{font-size:13px;white-space:normal}
+@media(max-width:600px){main{padding:24px 12px}.cards{gap:8px}.card{padding:14px}.card strong{font-size:23px}.panel{padding:16px}canvas{height:440px}.metric-table{min-width:530px}}
+@media print{body{background:white}details{break-before:page}.controls{display:none}canvas{max-height:350px}}
+</style>
+</head>
+<body><main>
+<div class="eyebrow">Experimental reproduction · 11 October 2026</div>
+<h1>Isotropic vs anisotropic<br>Lie Eikonal</h1>
+<div class="badge">COMPLETE · 570 / 570 evaluations</div>
+<p class="intro">The L-shape advantage reproduced. The original advantage across all test sets did not: isotropic beats anisotropic on 7 of 19 test-set means.</p>
+<div class="cards">
+<div class="card"><strong>90</strong><span>Fresh training runs · 4,000 epochs each</span></div>
+<div class="card"><strong>5 seeds</strong><span>Every configuration and environment</span></div>
+<div class="card"><strong>6 models</strong><span>3 environments · GPUs 0, 1, 2, 3</span></div>
+</div>
+<section class="panel" aria-labelledby="explorer-title">
+<h2 id="explorer-title">Explore the results</h2>
+<p class="note">Choose an environment, suite or test set, and metric. Dots show individual training seeds; solid marks show mean ± sample standard deviation.</p>
+<div class="controls">
+<label>Environment<select id="environment"><option value="Tshape3d_env1">T-shape</option><option value="Lshape3d_env3" selected>L-shape</option><option value="Ashape3d_env4">A-shape</option></select></label>
+<label>Evaluation<select id="evaluation"></select></label>
+<label>Metric<select id="metric"><option value="success">Success (%)</option><option value="collision">Collision (%)</option><option value="nonconv">Nonconvergence (%)</option></select></label>
+</div>
+<div class="chart-wrap"><canvas id="chart" role="img" aria-label="Five-seed comparison; exact values in the table below.">Exact chart values are provided in the table below.</canvas><div id="tooltip" class="tooltip"></div></div>
+<div id="legend" class="legend"></div>
+<p id="insight" class="insight" aria-live="polite"></p>
+<p class="note">Suite results give each frozen test set equal weight. Collision and nonconvergence can overlap; their percentages should not be added. Higher success is better; lower failure rates are better.</p>
+<div class="scroll"><table class="metric-table"><thead><tr><th>Configuration</th><th>Mean ± SD (%)</th><th>Seeds 1–5 (%)</th></tr></thead><tbody id="values"></tbody></table></div>
+</section>
+<details><summary>Read the complete report, methods and statistical comparisons</summary><div class="full-report">@@FULL_REPORT@@</div></details>
+<div class="downloads"><strong>Download the embedded data and report</strong><br>@@DOWNLOADS@@</div>
+<p class="note">This artifact works offline. Its charts use the HTML Canvas API. Static scientific figures, all 570 evaluation summaries, per-seed data and the reproducibility manifest are embedded. Detailed per-case planning records and model checkpoints remain in the reproduction output directory.</p>
+</main>
+<script id="artifact-data" type="application/json">@@DATA@@</script>
+<script>
+'use strict';
+const data = JSON.parse(document.getElementById('artifact-data').textContent);
+const configurations = [
+ ['metric','Metric baseline','#697887'],['aniso','Lie anisotropic','#d47c39'],
+ ['iso','Lie isotropic','#087f79'],['iso_orig','Isotropic / original network','#7771bc'],
+ ['iso_chart','Isotropic / chart gradient','#3a88ad'],['l1','Anisotropic L1 block sum','#b95675']
+];
+const env = document.getElementById('environment'), evaluation = document.getElementById('evaluation');
+const metric = document.getElementById('metric'), canvas = document.getElementById('chart');
+const tooltip = document.getElementById('tooltip');
+let points = [];
+function populate(){
+ evaluation.replaceChildren(new Option('All sets · equal-weight suite','suite'));
+ for (const [key,set] of Object.entries(data.sets)) if(set.cell===env.value) evaluation.add(new Option(set.label,key));
+ render();
+}
+function current(){
+ return evaluation.value==='suite' ? data.suites[env.value] : data.sets[evaluation.value].models;
+}
+function render(){
+ const results=current(), kind=metric.value, width=canvas.clientWidth, height=canvas.clientHeight;
+ if(!width || !height) return;
+ const scale=window.devicePixelRatio||1;
+ canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
+ const ctx=canvas.getContext('2d');ctx.scale(scale,scale);ctx.clearRect(0,0,width,height);
+ const left=width<650?108:210,right=22,top=24,bottom=40;
+ const plotWidth=width-left-right, rowHeight=(height-top-bottom)/configurations.length;
+ const x=v=>left+plotWidth*v/100;
+ ctx.font='12px system-ui';ctx.textBaseline='middle';
+ for(let v=0;v<=100;v+=20){
+  ctx.strokeStyle='#e6ebef';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x(v),top-10);ctx.lineTo(x(v),height-bottom+5);ctx.stroke();
+  ctx.fillStyle='#6b7682';ctx.textAlign='center';ctx.fillText(v+'%',x(v),height-bottom+22);
+ }
+ points=[];
+ const tbody=document.getElementById('values');tbody.replaceChildren();
+ configurations.forEach(([key,name,color],index)=>{
+  const value=results[key][kind], y=top+rowHeight*(index+.5);
+  ctx.textAlign='right';ctx.fillStyle='#283747';
+  const names=width<650?{'metric':'Metric','aniso':'Anisotropic','iso':'Isotropic','iso_orig':'Original net','iso_chart':'Chart grad.','l1':'L1 block sum'}:{};
+  ctx.fillText(names[key]||name,left-14,y);
+  ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x(Math.max(0,value.mean-value.sd)),y);ctx.lineTo(x(Math.min(100,value.mean+value.sd)),y);ctx.stroke();
+  ctx.lineWidth=1.5;
+  [Math.max(0,value.mean-value.sd),Math.min(100,value.mean+value.sd)].forEach(v=>{ctx.beginPath();ctx.moveTo(x(v),y-5);ctx.lineTo(x(v),y+5);ctx.stroke();});
+  value.values.forEach((v,i)=>{
+   const py=y-13+(i-2)*2.5;ctx.beginPath();ctx.arc(x(v),py,3.5,0,2*Math.PI);ctx.fillStyle=color;ctx.globalAlpha=.58;ctx.fill();ctx.globalAlpha=1;
+   points.push({x:x(v),y:py,text:name+' · seed '+(value.seeds?value.seeds[i]:i+1)+' · '+v.toFixed(2)+'%'});
+  });
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x(value.mean),y,5,0,2*Math.PI);ctx.fill();
+  points.push({x:x(value.mean),y,text:name+' · '+value.mean.toFixed(2)+' ± '+value.sd.toFixed(2)+'% (n=5)'});
+  const tr=document.createElement('tr');
+  [name,value.mean.toFixed(2)+' ± '+value.sd.toFixed(2),value.values.map(v=>v.toFixed(2)).join(', ')].forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td);});tbody.append(tr);
+ });
+ const delta=results.iso[kind].mean-results.aniso[kind].mean;
+ let note='Isotropic − anisotropic: '+(delta>=0?'+':'')+delta.toFixed(2)+' percentage points in '+metric.options[metric.selectedIndex].text.toLowerCase()+'.';
+ if(evaluation.value==='suite' && kind==='success'){
+  const contrast=data.contrasts.find(c=>c.cell===env.value && c.comparison==='iso − aniso');
+  note+=' Welch p = '+contrast.welch_p.toFixed(4)+' (unadjusted exploratory suite comparison).';
+ }else if(evaluation.value!=='suite') note+=' See the full report for per-set tests and multiple-comparison adjustment.';
+ document.getElementById('insight').textContent=note;
+ canvas.dataset.rendered='true';canvas.dataset.environment=env.value;canvas.dataset.evaluation=evaluation.value;canvas.dataset.metric=kind;
+ canvas.setAttribute('aria-label',env.options[env.selectedIndex].text+', '+evaluation.options[evaluation.selectedIndex].text+', '+metric.options[metric.selectedIndex].text+'. Mean, standard deviation and five seeds in table below.');
+ tooltip.style.display='none';
+}
+canvas.addEventListener('mousemove',event=>{
+ const rect=canvas.getBoundingClientRect(), mx=event.clientX-rect.left,my=event.clientY-rect.top;
+ const match=points.reduce((best,p)=>{const distance=Math.hypot(p.x-mx,p.y-my);return distance<13&&(!best||distance<best.distance)?{...p,distance}:best;},null);
+ if(!match){tooltip.style.display='none';return;}
+ tooltip.textContent=match.text;tooltip.style.display='block';
+ tooltip.style.left=Math.max(0,Math.min(mx+12,rect.width-tooltip.offsetWidth-4))+'px';
+ tooltip.style.top=Math.max(0,my-45)+'px';
+});
+canvas.addEventListener('mouseleave',()=>tooltip.style.display='none');
+env.addEventListener('change',populate);evaluation.addEventListener('change',render);metric.addEventListener('change',render);
+new ResizeObserver(render).observe(canvas);
+for(const [,name,color] of configurations){const span=document.createElement('span'), dot=document.createElement('i');dot.style.background=color;span.append(dot,document.createTextNode(name));document.getElementById('legend').append(span);}
+populate();
+</script>
+</body></html>

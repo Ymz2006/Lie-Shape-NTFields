@@ -1,0 +1,415 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Isotropic vs Anisotropic Lie Eikonal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Layout: one reading column of lab-notebook sections; charts span the column, tables scroll inside it. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2230;
+  --muted: #5a6474;
+  --line: #d9dee6;
+  --grid: #e8ebf0;
+  --metric: #4f6488;
+  --aniso: #b8741c;
+  --iso: #13867b;
+  --chart: #7656a8;
+  --good: #13867b;
+  --bad: #b5452f;
+  --chip: #eef1f5;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a1f28; --fg: #e4e8ee; --muted: #9aa4b3; --line: #2e3542; --grid: #232a35;
+    --metric: #8ea3c9; --aniso: #e0a14f; --iso: #3cc3b4; --chart: #a98bd8; --good: #3cc3b4; --bad: #e57a62; --chip: #232a35;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a1f28; --fg: #e4e8ee; --muted: #9aa4b3; --line: #2e3542; --grid: #232a35;
+  --metric: #8ea3c9; --aniso: #e0a14f; --iso: #3cc3b4; --chart: #a98bd8; --good: #3cc3b4; --bad: #e57a62; --chip: #232a35;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: flex; flex-direction: column; gap: 48px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4.2vw, 40px); line-height: 1.12; letter-spacing: -0.01em; }
+h2 { font-size: 24px; line-height: 1.2; }
+h3 { font-size: 17px; font-family: var(--font-body); font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 17px; color: var(--muted); }
+header { display: flex; flex-direction: column; gap: 14px; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.models { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.model { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.model .name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.sw { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.sw.metric { background: var(--metric); } .sw.aniso { background: var(--aniso); } .sw.iso { background: var(--iso); } .sw.chart { background: var(--chart); }
+.sw.ring { background: transparent; border: 2.5px solid var(--iso); width: 11px; height: 11px; }
+.eq { font-family: var(--font-data); font-size: 12.5px; background: var(--chip); padding: 6px 8px; border-radius: 4px; overflow-x: auto; white-space: nowrap; }
+.model .meta { font-size: 13px; color: var(--muted); }
+.findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.finding { border-top: 2px solid var(--fg); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.finding .k { font-family: var(--font-data); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.finding p { font-size: 14.5px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.panel-head .note { font-size: 13px; color: var(--muted); }
+.chart { width: 100%; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cap { font-size: 13px; color: var(--muted); max-width: 72ch; }
+svg text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); }
+svg .lab { font-family: var(--font-body); font-size: 12.5px; fill: var(--fg); }
+svg .grp { font-family: var(--font-display); font-size: 15px; font-weight: 600; fill: var(--fg); }
+svg .gridl { stroke: var(--grid); stroke-width: 1; }
+svg .axis { stroke: var(--line); stroke-width: 1; }
+svg .rowbg { fill: var(--chip); }
+.c-metric { fill: var(--metric); stroke: var(--metric); }
+.c-aniso { fill: var(--aniso); stroke: var(--aniso); }
+.c-iso { fill: var(--iso); stroke: var(--iso); }
+.c-iso_orig { fill: var(--surface); stroke: var(--iso); }
+.c-iso_chart { fill: var(--chart); stroke: var(--chart); }
+svg .seed { fill-opacity: 0.35; stroke-width: 0; }
+svg .c-iso_orig.seed { fill: var(--iso); fill-opacity: 0.18; }
+svg .mean { stroke-width: 2.5; }
+svg .whisk { stroke-width: 1.5; fill: none; }
+svg .delta-pos { fill: var(--good); } svg .delta-neg { fill: var(--bad); } svg .delta-ns { fill: var(--muted); }
+svg .sig { font-weight: 500; }
+svg [data-tip] { cursor: default; }
+.tables { display: grid; gap: 20px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 600; font-size: 12px; color: var(--muted); background: var(--chip); }
+td.num { font-family: var(--font-data); font-size: 12.5px; }
+td.best { font-weight: 600; color: var(--fg); }
+td .co { color: var(--muted); font-size: 11.5px; }
+tr.suite td { border-top: 2px solid var(--line); font-weight: 500; }
+td.sig-pos { color: var(--good); font-weight: 600; } td.sig-neg { color: var(--bad); font-weight: 600; }
+.notes { display: flex; flex-direction: column; gap: 10px; }
+.notes li { max-width: 72ch; }
+.notes ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+code { font-family: var(--font-data); font-size: 0.88em; background: var(--chip); padding: 1px 5px; border-radius: 3px; }
+#tip { position: fixed; pointer-events: none; background: var(--fg); color: var(--bg); font-family: var(--font-data); font-size: 12px; padding: 6px 8px; border-radius: 4px; max-width: 280px; z-index: 10; line-height: 1.4; white-space: pre-line; }
+@media (max-width: 560px) { .wrap { padding-inline: 16px; gap: 40px; } body { font-size: 14.5px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Neural Eikonal planner · SE(3) rigid bodies · Eikonal-only losses</div>
+    <h1>Isotropic vs anisotropic Lie Eikonal, against the metric baseline</h1>
+    <p class="lede">Three travel-time fields trained with nothing but the Eikonal loss, planned with forward MPPI on every held-out start/goal set of the T-, L- and A-shape environments.</p>
+  </header>
+
+  <section>
+    <h2>The three models</h2>
+    <div class="models">
+      <div class="model">
+        <div class="name"><span class="sw metric"></span>metric_baseline</div>
+        <div class="eq">S · |∇τ| = 1</div>
+        <div class="meta">Isotropic on the 6-D chart gradient, using the combined clearance speed. Original single-route network. TD and normal losses off.</div>
+      </div>
+      <div class="model">
+        <div class="name"><span class="sw aniso"></span>Lie anisotropic</div>
+        <div class="eq">√(S_d²|∇_v τ|² + S_a²|∇_w τ|²) = 1</div>
+        <div class="meta"><code>lie_metric</code>, sqrtN residual. Separate translation and rotation speeds on the body-frame Lie gradient. Two-route network.</div>
+      </div>
+      <div class="model">
+        <div class="name"><span class="sw iso"></span>Lie isotropic</div>
+        <div class="eq">S_d · √(|∇_v τ|² + |∇_w τ|²) = 1</div>
+        <div class="meta"><code>lie_isotropic</code>. One speed, the translational clearance, on the same Lie gradient. Two-route network.</div>
+      </div>
+    </div>
+    <p class="cap">All three map the residual as 10⁻²·(√N − 1)² with causality weight e<sup>−τ/2</sup> and train for 4,000 epochs. Seeds: metric_baseline 5 / 3 / 3, Lie anisotropic 6 / 3 / 3, Lie isotropic 3 / 3 / 3 on T / L / A.</p>
+  </section>
+
+  <section>
+    <h2>Summary</h2>
+    <div class="findings" id="findings"></div>
+    <div class="panel">
+      <div class="panel-head"><h3>Suite-mean success by environment</h3><span class="note">Mean of all test sets per seed · dots are seeds · bar is ±1 sd</span></div>
+      <div class="legend">
+        <span><i class="sw metric"></i>metric_baseline</span>
+        <span><i class="sw aniso"></i>Lie anisotropic</span>
+        <span><i class="sw iso"></i>Lie isotropic</span>
+      </div>
+      <div class="chart" id="suite-chart"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Every test set</h2>
+    <p class="cap">Each row is one held-out start/goal set. Small dots are individual training seeds; the larger mark is their mean. The right column is Lie isotropic minus metric_baseline in success points, bold when Welch p &lt; 0.05. Hover a mark for its numbers.</p>
+    <div class="legend">
+      <span><i class="sw metric"></i>metric_baseline</span>
+      <span><i class="sw aniso"></i>Lie anisotropic</span>
+      <span><i class="sw iso"></i>Lie isotropic</span>
+    </div>
+    <div id="set-panels" class="tables"></div>
+  </section>
+
+  <section>
+    <h2>How runs fail</h2>
+    <p class="cap">Averaged over every set and seed in each environment. A run that does not succeed either collides or fails to converge within the iteration budget; the evaluator counts the two separately, so they can overlap.</p>
+    <div class="panel">
+      <div class="legend">
+        <span><i class="sw metric"></i>metric_baseline</span>
+        <span><i class="sw aniso"></i>Lie anisotropic</span>
+        <span><i class="sw iso"></i>Lie isotropic</span>
+      </div>
+      <div class="chart" id="fail-chart"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Loss or network?</h2>
+    <p>metric_baseline runs on the original single-route network while both Lie models use the two-route network. Two controls of Lie isotropic separate the pieces: the same loss on the original network, and the same network with the plain chart gradient in place of the Lie gradient.</p>
+    <div class="panel">
+      <div class="panel-head"><h3>Suite-mean success with controls</h3><span class="note">dots are seeds · bar is ±1 sd</span></div>
+      <div class="legend">
+        <span><i class="sw metric"></i>metric_baseline · original net</span>
+        <span><i class="sw ring"></i>Lie isotropic · original net</span>
+        <span><i class="sw iso"></i>Lie isotropic · two-route</span>
+        <span><i class="sw chart"></i>Isotropic · two-route · chart gradient</span>
+      </div>
+      <div class="chart" id="ctrl-chart"></div>
+    </div>
+    <p class="cap">On the original network, Lie isotropic lands close to metric_baseline in every environment, so most of its lead on L- and A-shape comes from the two-route network. With the network fixed, swapping the Lie gradient for the chart gradient changes little on T and L; on A it lowers the mean and widens the seed spread, though no set is significant with three seeds.</p>
+  </section>
+
+  <section>
+    <h2>Full numbers</h2>
+    <p class="cap">Success % as mean ± sd over seeds, collision % beneath. Best mean per row in bold. Deltas are Lie isotropic minus the named model with Welch t-test p-values; colored when p &lt; 0.05.</p>
+    <div id="full-tables" class="tables"></div>
+  </section>
+
+  <section class="notes">
+    <h2>Method</h2>
+    <ul>
+      <li>Evaluation is <code>analysis/plan_eval.py</code> with forward MPPI and evaluation seed 0, run through <code>analysis/run_plan_suite.sh</code>. Results are in <code>results/compare/plan/&lt;tag&gt;/&lt;set&gt;.json</code>.</li>
+      <li>T-shape (env1) has nine sets: the standard 1k set, two tighter-clearance sets, non-linear, farthest and hard-plus-far pairs, and rotation-heavy, big-angle and translation-only sets. L-shape (env3) and A-shape (env4) have the first five kinds.</li>
+      <li>Run tags: <code>metric_s*</code>, <code>lie_rsqrtN_s*</code>, <code>lieiso_s*</code>, <code>lieiso_orig_s*</code>, <code>lieiso_chart_s*</code>, with an <code>Lshape3d_env3_</code> or <code>Ashape3d_env4_</code> prefix on L and A.</li>
+      <li>The other anisotropic Eikonal-only model with all three environments evaluated, the L1 block sum, ties Lie anisotropic on the three-environment average (67.7 vs 66.4) and is not shown.</li>
+      <li>Three seeds per model on L and A is a small sample; treat per-set differences without a bold delta as direction, not proof.</li>
+    </ul>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const DATA = {"envs": [{"key": "T", "name": "T-shape", "env": "env1", "sets": [{"id": "Tshape3d_env1", "label": "Standard 1k", "models": {"metric": [{"seed": 1, "success": 82.4, "collision": 10.6, "nonconv": 12.8}, {"seed": 2, "success": 81.7, "collision": 10.8, "nonconv": 14.3}, {"seed": 3, "success": 82.1, "collision": 11.8, "nonconv": 12.1}, {"seed": 4, "success": 82.2, "collision": 11.4, "nonconv": 13.0}, {"seed": 5, "success": 81.1, "collision": 11.8, "nonconv": 13.5}], "aniso": [{"seed": 1, "success": 67.0, "collision": 27.6, "nonconv": 6.9}, {"seed": 2, "success": 77.9, "collision": 16.3, "nonconv": 7.7}, {"seed": 3, "success": 71.7, "collision": 23.0, "nonconv": 9.3}, {"seed": 4, "success": 45.8, "collision": 52.9, "nonconv": 4.2}, {"seed": 5, "success": 69.5, "collision": 25.0, "nonconv": 7.6}, {"seed": 6, "success": 72.7, "collision": 21.7, "nonconv": 8.0}], "iso": [{"seed": 1, "success": 72.6, "collision": 23.4, "nonconv": 5.4}, {"seed": 2, "success": 72.5, "collision": 22.4, "nonconv": 7.9}, {"seed": 3, "success": 77.0, "collision": 18.5, "nonconv": 6.3}], "iso_orig": [{"seed": 1, "success": 80.3, "collision": 15.2, "nonconv": 11.4}, {"seed": 2, "success": 77.9, "collision": 17.0, "nonconv": 13.5}, {"seed": 3, "success": 77.7, "collision": 16.8, "nonconv": 14.0}], "iso_chart": [{"seed": 1, "success": 82.7, "collision": 9.5, "nonconv": 9.1}, {"seed": 2, "success": 69.3, "collision": 26.4, "nonconv": 7.0}, {"seed": 3, "success": 78.0, "collision": 16.3, "nonconv": 7.0}]}, "p": {"iso_metric": 0.0312, "iso_aniso": 0.2195}}, {"id": "Tshape3d_env1_tight_3d", "label": "Tight 0.005", "models": {"metric": [{"seed": 1, "success": 68.4, "collision": 23.8, "nonconv": 17.26}, {"seed": 2, "success": 67.57, "collision": 22.87, "nonconv": 20.06}, {"seed": 3, "success": 67.26, "collision": 25.26, "nonconv": 17.15}, {"seed": 4, "success": 67.05, "collision": 25.47, "nonconv": 18.4}, {"seed": 5, "success": 67.46, "collision": 25.99, "nonconv": 18.71}], "aniso": [{"seed": 1, "success": 53.43, "collision": 41.58, "nonconv": 12.06}, {"seed": 2, "success": 60.19, "collision": 32.74, "nonconv": 14.76}, {"seed": 3, "success": 58.0, "collision": 36.28, "nonconv": 15.49}, {"seed": 4, "success": 38.25, "collision": 59.88, "nonconv": 6.65}, {"seed": 5, "success": 55.09, "collision": 38.98, "nonconv": 11.43}, {"seed": 6, "success": 57.38, "collision": 35.86, "nonconv": 13.93}], "iso": [{"seed": 1, "success": 58.42, "collision": 35.97, "nonconv": 10.91}, {"seed": 2, "success": 58.94, "collision": 35.65, "nonconv": 13.1}, {"seed": 3, "success": 65.8, "collision": 27.75, "nonconv": 11.75}], "iso_orig": [{"seed": 1, "success": 65.8, "collision": 26.92, "nonconv": 16.42}, {"seed": 2, "success": 66.42, "collision": 26.72, "nonconv": 18.3}, {"seed": 3, "success": 65.07, "collision": 27.13, "nonconv": 18.3}], "iso_chart": [{"seed": 1, "success": 68.4, "collision": 21.62, "nonconv": 15.59}, {"seed": 2, "success": 58.84, "collision": 36.59, "nonconv": 11.54}, {"seed": 3, "success": 66.01, "collision": 26.92, "nonconv": 13.1}]}, "p": {"iso_metric": 0.1106, "iso_aniso": 0.1118}}, {"id": "Tshape3d_env1_tight001_3d", "label": "Very tight", "models": {"metric": [{"seed": 1, "success": 62.15, "collision": 28.5, "nonconv": 20.68}, {"seed": 2, "success": 61.8, "collision": 29.79, "nonconv": 22.31}, {"seed": 3, "success": 61.57, "collision": 30.49, "nonconv": 20.21}, {"seed": 4, "success": 62.62, "collision": 30.37, "nonconv": 20.79}, {"seed": 5, "success": 64.25, "collision": 29.56, "nonconv": 20.21}], "aniso": [{"seed": 1, "success": 46.73, "collision": 46.61, "nonconv": 16.47}, {"seed": 2, "success": 53.04, "collision": 40.89, "nonconv": 19.86}, {"seed": 3, "success": 49.42, "collision": 43.81, "nonconv": 19.98}, {"seed": 4, "success": 36.33, "collision": 61.57, "nonconv": 9.23}, {"seed": 5, "success": 47.66, "collision": 48.25, "nonconv": 14.25}, {"seed": 6, "success": 51.52, "collision": 43.22, "nonconv": 15.3}], "iso": [{"seed": 1, "success": 54.56, "collision": 40.89, "nonconv": 12.97}, {"seed": 2, "success": 51.87, "collision": 41.94, "nonconv": 18.34}, {"seed": 3, "success": 57.59, "collision": 36.45, "nonconv": 16.71}], "iso_orig": [{"seed": 1, "success": 60.86, "collision": 33.06, "nonconv": 16.71}, {"seed": 2, "success": 59.35, "collision": 33.41, "nonconv": 19.28}, {"seed": 3, "success": 59.11, "collision": 34.93, "nonconv": 18.22}], "iso_chart": [{"seed": 1, "success": 60.16, "collision": 30.84, "nonconv": 19.16}, {"seed": 2, "success": 52.92, "collision": 41.59, "nonconv": 15.89}, {"seed": 3, "success": 56.89, "collision": 36.57, "nonconv": 17.06}]}, "p": {"iso_metric": 0.0335, "iso_aniso": 0.0434}}, {"id": "Tshape3d_env1_tight_3d_exp1", "label": "Non-linear", "models": {"metric": [{"seed": 1, "success": 63.5, "collision": 26.5, "nonconv": 21.5}, {"seed": 2, "success": 59.5, "collision": 31.0, "nonconv": 25.0}, {"seed": 3, "success": 67.5, "collision": 25.5, "nonconv": 16.5}, {"seed": 4, "success": 64.0, "collision": 28.0, "nonconv": 20.5}, {"seed": 5, "success": 64.0, "collision": 28.5, "nonconv": 22.5}], "aniso": [{"seed": 1, "success": 51.5, "collision": 44.0, "nonconv": 13.0}, {"seed": 2, "success": 55.5, "collision": 38.0, "nonconv": 16.5}, {"seed": 3, "success": 57.0, "collision": 37.0, "nonconv": 15.0}, {"seed": 4, "success": 32.0, "collision": 66.5, "nonconv": 7.5}, {"seed": 5, "success": 56.5, "collision": 38.5, "nonconv": 11.0}, {"seed": 6, "success": 52.0, "collision": 39.0, "nonconv": 16.0}], "iso": [{"seed": 1, "success": 55.5, "collision": 38.5, "nonconv": 11.0}, {"seed": 2, "success": 58.5, "collision": 37.0, "nonconv": 15.5}, {"seed": 3, "success": 67.5, "collision": 26.5, "nonconv": 11.5}], "iso_orig": [{"seed": 1, "success": 61.0, "collision": 31.0, "nonconv": 20.5}, {"seed": 2, "success": 66.0, "collision": 27.5, "nonconv": 20.5}, {"seed": 3, "success": 58.5, "collision": 32.0, "nonconv": 19.5}], "iso_chart": [{"seed": 1, "success": 62.5, "collision": 25.0, "nonconv": 19.5}, {"seed": 2, "success": 54.0, "collision": 41.0, "nonconv": 11.5}, {"seed": 3, "success": 59.0, "collision": 32.0, "nonconv": 17.0}]}, "p": {"iso_metric": 0.4748, "iso_aniso": 0.1143}}, {"id": "Tshape3d_env1_tight_3d_exp2", "label": "Farthest", "models": {"metric": [{"seed": 1, "success": 46.0, "collision": 35.0, "nonconv": 41.0}, {"seed": 2, "success": 42.5, "collision": 34.0, "nonconv": 47.0}, {"seed": 3, "success": 50.0, "collision": 31.0, "nonconv": 41.0}, {"seed": 4, "success": 39.5, "collision": 39.0, "nonconv": 47.5}, {"seed": 5, "success": 48.0, "collision": 31.5, "nonconv": 44.5}], "aniso": [{"seed": 1, "success": 42.5, "collision": 46.0, "nonconv": 19.5}, {"seed": 2, "success": 47.0, "collision": 39.5, "nonconv": 27.0}, {"seed": 3, "success": 44.5, "collision": 48.0, "nonconv": 22.0}, {"seed": 4, "success": 29.0, "collision": 69.0, "nonconv": 9.0}, {"seed": 5, "success": 40.0, "collision": 49.0, "nonconv": 22.5}, {"seed": 6, "success": 48.5, "collision": 37.0, "nonconv": 25.5}], "iso": [{"seed": 1, "success": 47.0, "collision": 46.0, "nonconv": 15.5}, {"seed": 2, "success": 51.0, "collision": 42.0, "nonconv": 21.0}, {"seed": 3, "success": 61.0, "collision": 29.5, "nonconv": 15.5}], "iso_orig": [{"seed": 1, "success": 47.5, "collision": 37.5, "nonconv": 39.5}, {"seed": 2, "success": 35.5, "collision": 46.0, "nonconv": 51.0}, {"seed": 3, "success": 35.5, "collision": 44.0, "nonconv": 49.0}], "iso_chart": [{"seed": 1, "success": 58.0, "collision": 30.0, "nonconv": 20.0}, {"seed": 2, "success": 49.0, "collision": 43.0, "nonconv": 18.0}, {"seed": 3, "success": 61.5, "collision": 31.0, "nonconv": 15.5}]}, "p": {"iso_metric": 0.1914, "iso_aniso": 0.0936}}, {"id": "Tshape3d_env1_tight_3d_exp3", "label": "Hard + far", "models": {"metric": [{"seed": 1, "success": 44.5, "collision": 34.5, "nonconv": 42.5}, {"seed": 2, "success": 41.0, "collision": 34.5, "nonconv": 49.0}, {"seed": 3, "success": 48.0, "collision": 36.0, "nonconv": 39.0}, {"seed": 4, "success": 41.5, "collision": 37.0, "nonconv": 46.5}, {"seed": 5, "success": 49.0, "collision": 32.0, "nonconv": 42.5}], "aniso": [{"seed": 1, "success": 41.5, "collision": 46.5, "nonconv": 21.0}, {"seed": 2, "success": 47.5, "collision": 40.0, "nonconv": 25.5}, {"seed": 3, "success": 44.0, "collision": 47.5, "nonconv": 24.0}, {"seed": 4, "success": 27.5, "collision": 70.5, "nonconv": 9.5}, {"seed": 5, "success": 36.0, "collision": 52.5, "nonconv": 22.0}, {"seed": 6, "success": 46.0, "collision": 39.0, "nonconv": 26.5}], "iso": [{"seed": 1, "success": 44.5, "collision": 47.0, "nonconv": 17.5}, {"seed": 2, "success": 47.5, "collision": 45.0, "nonconv": 21.5}, {"seed": 3, "success": 58.5, "collision": 31.0, "nonconv": 15.5}], "iso_orig": [{"seed": 1, "success": 46.5, "collision": 38.0, "nonconv": 40.0}, {"seed": 2, "success": 36.0, "collision": 45.5, "nonconv": 51.0}, {"seed": 3, "success": 36.0, "collision": 43.5, "nonconv": 49.0}], "iso_chart": [{"seed": 1, "success": 58.0, "collision": 29.5, "nonconv": 21.0}, {"seed": 2, "success": 47.0, "collision": 47.0, "nonconv": 17.0}, {"seed": 3, "success": 57.0, "collision": 35.0, "nonconv": 16.5}]}, "p": {"iso_metric": 0.3354, "iso_aniso": 0.1337}}, {"id": "Tshape3d_env1_rotheavy", "label": "Rotation-heavy", "models": {"metric": [{"seed": 1, "success": 84.18, "collision": 15.31, "nonconv": 2.55}, {"seed": 2, "success": 77.55, "collision": 21.43, "nonconv": 4.08}, {"seed": 3, "success": 78.06, "collision": 21.94, "nonconv": 3.57}, {"seed": 4, "success": 78.06, "collision": 20.41, "nonconv": 5.1}, {"seed": 5, "success": 76.53, "collision": 21.43, "nonconv": 5.61}], "aniso": [{"seed": 1, "success": 62.24, "collision": 37.24, "nonconv": 3.57}, {"seed": 2, "success": 67.35, "collision": 29.59, "nonconv": 7.65}, {"seed": 3, "success": 57.14, "collision": 39.29, "nonconv": 6.12}, {"seed": 4, "success": 48.47, "collision": 50.51, "nonconv": 1.53}, {"seed": 5, "success": 58.16, "collision": 39.8, "nonconv": 3.57}, {"seed": 6, "success": 61.22, "collision": 37.76, "nonconv": 3.06}], "iso": [{"seed": 1, "success": 62.76, "collision": 36.73, "nonconv": 2.55}, {"seed": 2, "success": 66.84, "collision": 32.14, "nonconv": 3.57}, {"seed": 3, "success": 68.88, "collision": 29.59, "nonconv": 2.04}], "iso_orig": [{"seed": 1, "success": 73.98, "collision": 25.0, "nonconv": 4.59}, {"seed": 2, "success": 75.0, "collision": 23.47, "nonconv": 5.1}, {"seed": 3, "success": 74.49, "collision": 23.98, "nonconv": 4.59}], "iso_chart": [{"seed": 1, "success": 73.47, "collision": 23.47, "nonconv": 4.59}, {"seed": 2, "success": 57.14, "collision": 41.33, "nonconv": 2.55}, {"seed": 3, "success": 63.27, "collision": 34.18, "nonconv": 4.59}]}, "p": {"iso_metric": 0.0041, "iso_aniso": 0.06}}, {"id": "Tshape3d_env1_bigangle", "label": "Big angles", "models": {"metric": [{"seed": 1, "success": 31.94, "collision": 52.88, "nonconv": 47.12}, {"seed": 2, "success": 31.94, "collision": 53.93, "nonconv": 47.12}, {"seed": 3, "success": 38.74, "collision": 51.83, "nonconv": 41.88}, {"seed": 4, "success": 39.27, "collision": 47.64, "nonconv": 46.07}, {"seed": 5, "success": 32.98, "collision": 48.69, "nonconv": 48.17}], "aniso": [{"seed": 1, "success": 40.84, "collision": 52.36, "nonconv": 16.23}, {"seed": 2, "success": 49.21, "collision": 40.31, "nonconv": 26.18}, {"seed": 3, "success": 42.93, "collision": 51.83, "nonconv": 24.61}, {"seed": 4, "success": 28.8, "collision": 69.11, "nonconv": 14.14}, {"seed": 5, "success": 42.93, "collision": 50.26, "nonconv": 19.9}, {"seed": 6, "success": 48.17, "collision": 46.07, "nonconv": 17.8}], "iso": [{"seed": 1, "success": 44.5, "collision": 50.26, "nonconv": 16.23}, {"seed": 2, "success": 52.36, "collision": 43.46, "nonconv": 12.04}, {"seed": 3, "success": 57.59, "collision": 36.65, "nonconv": 15.18}], "iso_orig": [{"seed": 1, "success": 35.6, "collision": 57.07, "nonconv": 37.17}, {"seed": 2, "success": 26.7, "collision": 59.69, "nonconv": 49.21}, {"seed": 3, "success": 26.7, "collision": 57.59, "nonconv": 47.12}], "iso_chart": [{"seed": 1, "success": 56.02, "collision": 34.03, "nonconv": 17.28}, {"seed": 2, "success": 41.88, "collision": 50.26, "nonconv": 17.28}, {"seed": 3, "success": 48.69, "collision": 43.46, "nonconv": 19.37}]}, "p": {"iso_metric": 0.0326, "iso_aniso": 0.1173}}, {"id": "Tshape3d_env1_transonly", "label": "Translation only", "models": {"metric": [{"seed": 1, "success": 66.32, "collision": 25.91, "nonconv": 18.13}, {"seed": 2, "success": 71.5, "collision": 19.69, "nonconv": 15.03}, {"seed": 3, "success": 66.32, "collision": 24.87, "nonconv": 18.65}, {"seed": 4, "success": 73.58, "collision": 23.32, "nonconv": 15.03}, {"seed": 5, "success": 69.43, "collision": 20.73, "nonconv": 16.58}], "aniso": [{"seed": 1, "success": 55.44, "collision": 33.68, "nonconv": 16.58}, {"seed": 2, "success": 58.55, "collision": 26.42, "nonconv": 22.28}, {"seed": 3, "success": 54.92, "collision": 31.09, "nonconv": 20.73}, {"seed": 4, "success": 41.45, "collision": 52.85, "nonconv": 11.92}, {"seed": 5, "success": 56.99, "collision": 34.72, "nonconv": 16.58}, {"seed": 6, "success": 56.99, "collision": 30.05, "nonconv": 19.69}], "iso": [{"seed": 1, "success": 59.07, "collision": 30.57, "nonconv": 16.06}, {"seed": 2, "success": 55.96, "collision": 31.61, "nonconv": 18.65}, {"seed": 3, "success": 65.28, "collision": 20.73, "nonconv": 18.65}], "iso_orig": [{"seed": 1, "success": 69.95, "collision": 23.32, "nonconv": 12.44}, {"seed": 2, "success": 65.8, "collision": 29.02, "nonconv": 16.58}, {"seed": 3, "success": 63.73, "collision": 29.53, "nonconv": 16.06}], "iso_chart": [{"seed": 1, "success": 62.18, "collision": 21.76, "nonconv": 23.32}, {"seed": 2, "success": 58.55, "collision": 27.46, "nonconv": 20.73}, {"seed": 3, "success": 59.07, "collision": 24.87, "nonconv": 24.35}]}, "p": {"iso_metric": 0.054, "iso_aniso": 0.1643}}], "suite": {"metric": [61.04, 59.45, 62.17, 60.86, 61.42], "aniso": [51.24, 57.36, 53.29, 36.4, 51.43, 54.94], "iso": [55.43, 57.27, 64.35], "iso_orig": [60.17, 56.52, 55.2], "iso_chart": [64.6, 54.29, 61.05]}, "suite_p": {"iso_metric": 0.5452, "iso_aniso": 0.0875}}, {"key": "L", "name": "L-shape", "env": "env3", "sets": [{"id": "Lshape3d_env3", "label": "Standard 1k", "models": {"metric": [{"seed": 1, "success": 90.4, "collision": 4.5, "nonconv": 7.8}, {"seed": 2, "success": 87.7, "collision": 4.7, "nonconv": 11.4}, {"seed": 3, "success": 91.6, "collision": 3.7, "nonconv": 7.8}], "aniso": [{"seed": 1, "success": 87.5, "collision": 5.5, "nonconv": 8.3}, {"seed": 2, "success": 92.0, "collision": 4.7, "nonconv": 3.6}, {"seed": 3, "success": 90.4, "collision": 5.7, "nonconv": 4.4}], "iso": [{"seed": 1, "success": 96.1, "collision": 2.4, "nonconv": 1.7}, {"seed": 2, "success": 93.3, "collision": 4.0, "nonconv": 3.3}, {"seed": 3, "success": 95.1, "collision": 3.5, "nonconv": 1.9}], "iso_orig": [{"seed": 1, "success": 90.8, "collision": 5.1, "nonconv": 8.3}, {"seed": 2, "success": 93.7, "collision": 3.7, "nonconv": 4.8}, {"seed": 3, "success": 86.6, "collision": 4.9, "nonconv": 12.6}], "iso_chart": [{"seed": 1, "success": 95.1, "collision": 2.4, "nonconv": 2.5}, {"seed": 2, "success": 95.8, "collision": 2.8, "nonconv": 1.7}, {"seed": 3, "success": 92.5, "collision": 4.4, "nonconv": 3.7}]}, "p": {"iso_metric": 0.0297, "iso_aniso": 0.0446}}, {"id": "Lshape3d_env3_tight_3d", "label": "Tight 0.005", "models": {"metric": [{"seed": 1, "success": 81.63, "collision": 10.51, "nonconv": 11.04}, {"seed": 2, "success": 78.87, "collision": 11.46, "nonconv": 14.65}, {"seed": 3, "success": 81.42, "collision": 12.31, "nonconv": 11.68}], "aniso": [{"seed": 1, "success": 76.33, "collision": 15.39, "nonconv": 11.89}, {"seed": 2, "success": 80.89, "collision": 14.12, "nonconv": 8.07}, {"seed": 3, "success": 78.77, "collision": 16.56, "nonconv": 8.49}], "iso": [{"seed": 1, "success": 86.31, "collision": 10.62, "nonconv": 4.35}, {"seed": 2, "success": 81.42, "collision": 12.21, "nonconv": 8.17}, {"seed": 3, "success": 83.65, "collision": 11.57, "nonconv": 6.79}], "iso_orig": [{"seed": 1, "success": 83.97, "collision": 10.19, "nonconv": 10.93}, {"seed": 2, "success": 85.35, "collision": 9.98, "nonconv": 8.49}, {"seed": 3, "success": 79.09, "collision": 10.08, "nonconv": 15.71}], "iso_chart": [{"seed": 1, "success": 83.33, "collision": 12.21, "nonconv": 7.32}, {"seed": 2, "success": 87.37, "collision": 9.66, "nonconv": 4.25}, {"seed": 3, "success": 78.98, "collision": 14.54, "nonconv": 10.62}]}, "p": {"iso_metric": 0.1452, "iso_aniso": 0.057}}, {"id": "Lshape3d_env3_tight_3d_exp1", "label": "Non-linear", "models": {"metric": [{"seed": 1, "success": 71.0, "collision": 17.5, "nonconv": 18.0}, {"seed": 2, "success": 72.5, "collision": 14.5, "nonconv": 21.0}, {"seed": 3, "success": 72.0, "collision": 18.0, "nonconv": 16.5}], "aniso": [{"seed": 1, "success": 63.5, "collision": 21.0, "nonconv": 20.5}, {"seed": 2, "success": 71.0, "collision": 23.5, "nonconv": 9.5}, {"seed": 3, "success": 73.0, "collision": 24.0, "nonconv": 8.5}], "iso": [{"seed": 1, "success": 81.0, "collision": 12.0, "nonconv": 10.0}, {"seed": 2, "success": 70.5, "collision": 19.0, "nonconv": 12.5}, {"seed": 3, "success": 74.5, "collision": 18.0, "nonconv": 11.5}], "iso_orig": [{"seed": 1, "success": 75.5, "collision": 14.5, "nonconv": 18.0}, {"seed": 2, "success": 73.5, "collision": 15.5, "nonconv": 18.5}, {"seed": 3, "success": 68.5, "collision": 11.5, "nonconv": 26.5}], "iso_chart": [{"seed": 1, "success": 80.5, "collision": 17.0, "nonconv": 7.0}, {"seed": 2, "success": 75.5, "collision": 18.0, "nonconv": 8.5}, {"seed": 3, "success": 74.5, "collision": 17.0, "nonconv": 12.5}]}, "p": {"iso_metric": 0.371, "iso_aniso": 0.217}}, {"id": "Lshape3d_env3_tight_3d_exp2", "label": "Farthest", "models": {"metric": [{"seed": 1, "success": 65.5, "collision": 18.0, "nonconv": 25.5}, {"seed": 2, "success": 61.0, "collision": 17.0, "nonconv": 33.5}, {"seed": 3, "success": 68.0, "collision": 18.0, "nonconv": 26.0}], "aniso": [{"seed": 1, "success": 60.0, "collision": 23.0, "nonconv": 26.0}, {"seed": 2, "success": 69.5, "collision": 19.0, "nonconv": 20.0}, {"seed": 3, "success": 67.5, "collision": 22.0, "nonconv": 19.5}], "iso": [{"seed": 1, "success": 78.5, "collision": 14.0, "nonconv": 9.5}, {"seed": 2, "success": 72.0, "collision": 15.5, "nonconv": 17.0}, {"seed": 3, "success": 75.0, "collision": 13.5, "nonconv": 15.0}], "iso_orig": [{"seed": 1, "success": 68.0, "collision": 18.0, "nonconv": 26.0}, {"seed": 2, "success": 70.5, "collision": 17.5, "nonconv": 24.0}, {"seed": 3, "success": 59.0, "collision": 14.5, "nonconv": 38.0}], "iso_chart": [{"seed": 1, "success": 76.5, "collision": 16.0, "nonconv": 12.0}, {"seed": 2, "success": 79.0, "collision": 14.0, "nonconv": 11.5}, {"seed": 3, "success": 69.5, "collision": 19.0, "nonconv": 21.0}]}, "p": {"iso_metric": 0.0208, "iso_aniso": 0.0606}}, {"id": "Lshape3d_env3_tight_3d_exp3", "label": "Hard + far", "models": {"metric": [{"seed": 1, "success": 67.0, "collision": 18.0, "nonconv": 24.5}, {"seed": 2, "success": 60.0, "collision": 17.5, "nonconv": 34.0}, {"seed": 3, "success": 68.5, "collision": 18.0, "nonconv": 26.0}], "aniso": [{"seed": 1, "success": 58.0, "collision": 24.5, "nonconv": 27.0}, {"seed": 2, "success": 67.0, "collision": 22.5, "nonconv": 18.5}, {"seed": 3, "success": 66.5, "collision": 23.5, "nonconv": 16.5}], "iso": [{"seed": 1, "success": 79.0, "collision": 15.0, "nonconv": 8.5}, {"seed": 2, "success": 68.5, "collision": 18.0, "nonconv": 19.0}, {"seed": 3, "success": 72.0, "collision": 15.0, "nonconv": 16.0}], "iso_orig": [{"seed": 1, "success": 70.0, "collision": 17.5, "nonconv": 24.0}, {"seed": 2, "success": 69.5, "collision": 18.0, "nonconv": 24.5}, {"seed": 3, "success": 54.5, "collision": 15.0, "nonconv": 43.0}], "iso_chart": [{"seed": 1, "success": 75.5, "collision": 14.0, "nonconv": 15.0}, {"seed": 2, "success": 79.5, "collision": 14.0, "nonconv": 10.5}, {"seed": 3, "success": 67.0, "collision": 22.0, "nonconv": 19.0}]}, "p": {"iso_metric": 0.1212, "iso_aniso": 0.0932}}], "suite": {"metric": [75.11, 72.01, 76.3], "aniso": [69.07, 76.08, 75.23], "iso": [84.18, 77.14, 80.05], "iso_orig": [77.65, 78.51, 69.54], "iso_chart": [82.19, 83.43, 76.5]}, "suite_p": {"iso_metric": 0.08, "iso_aniso": 0.081}}, {"key": "A", "name": "A-shape", "env": "env4", "sets": [{"id": "Ashape3d_env4", "label": "Standard 1k", "models": {"metric": [{"seed": 1, "success": 86.4, "collision": 5.9, "nonconv": 11.9}, {"seed": 2, "success": 88.9, "collision": 5.0, "nonconv": 9.7}, {"seed": 3, "success": 85.9, "collision": 6.4, "nonconv": 11.7}], "aniso": [{"seed": 1, "success": 89.5, "collision": 8.5, "nonconv": 3.3}, {"seed": 2, "success": 90.5, "collision": 8.9, "nonconv": 1.1}, {"seed": 3, "success": 88.8, "collision": 9.6, "nonconv": 2.4}], "iso": [{"seed": 1, "success": 91.0, "collision": 7.6, "nonconv": 1.7}, {"seed": 2, "success": 92.0, "collision": 6.9, "nonconv": 1.4}, {"seed": 3, "success": 93.1, "collision": 6.2, "nonconv": 1.0}], "iso_orig": [{"seed": 1, "success": 90.8, "collision": 5.7, "nonconv": 5.7}, {"seed": 2, "success": 90.1, "collision": 5.6, "nonconv": 7.5}, {"seed": 3, "success": 87.0, "collision": 8.5, "nonconv": 9.7}], "iso_chart": [{"seed": 1, "success": 91.5, "collision": 8.0, "nonconv": 0.7}, {"seed": 2, "success": 81.8, "collision": 17.4, "nonconv": 1.8}, {"seed": 3, "success": 91.5, "collision": 6.9, "nonconv": 1.8}]}, "p": {"iso_metric": 0.0154, "iso_aniso": 0.0378}}, {"id": "Ashape3d_env4_tight_3d", "label": "Tight 0.005", "models": {"metric": [{"seed": 1, "success": 76.22, "collision": 14.44, "nonconv": 15.85}, {"seed": 2, "success": 81.43, "collision": 13.36, "nonconv": 10.21}, {"seed": 3, "success": 78.28, "collision": 14.22, "nonconv": 14.22}], "aniso": [{"seed": 1, "success": 77.74, "collision": 19.11, "nonconv": 7.82}, {"seed": 2, "success": 80.02, "collision": 18.57, "nonconv": 4.89}, {"seed": 3, "success": 81.22, "collision": 17.37, "nonconv": 4.67}], "iso": [{"seed": 1, "success": 81.76, "collision": 16.07, "nonconv": 5.32}, {"seed": 2, "success": 81.43, "collision": 15.74, "nonconv": 6.08}, {"seed": 3, "success": 80.46, "collision": 16.4, "nonconv": 5.54}], "iso_orig": [{"seed": 1, "success": 81.0, "collision": 15.42, "nonconv": 7.06}, {"seed": 2, "success": 81.54, "collision": 14.98, "nonconv": 9.45}, {"seed": 3, "success": 77.85, "collision": 16.18, "nonconv": 12.38}], "iso_chart": [{"seed": 1, "success": 84.36, "collision": 15.09, "nonconv": 2.61}, {"seed": 2, "success": 72.86, "collision": 25.84, "nonconv": 4.78}, {"seed": 3, "success": 81.11, "collision": 15.31, "nonconv": 6.41}]}, "p": {"iso_metric": 0.2271, "iso_aniso": 0.2635}}, {"id": "Ashape3d_env4_tight_3d_exp1", "label": "Non-linear", "models": {"metric": [{"seed": 1, "success": 68.0, "collision": 18.0, "nonconv": 21.5}, {"seed": 2, "success": 77.5, "collision": 17.0, "nonconv": 12.0}, {"seed": 3, "success": 73.0, "collision": 19.5, "nonconv": 14.5}], "aniso": [{"seed": 1, "success": 69.5, "collision": 27.5, "nonconv": 8.0}, {"seed": 2, "success": 66.5, "collision": 32.0, "nonconv": 6.5}, {"seed": 3, "success": 75.5, "collision": 23.0, "nonconv": 7.5}], "iso": [{"seed": 1, "success": 75.5, "collision": 23.0, "nonconv": 6.5}, {"seed": 2, "success": 73.5, "collision": 22.0, "nonconv": 8.0}, {"seed": 3, "success": 73.5, "collision": 22.5, "nonconv": 7.0}], "iso_orig": [{"seed": 1, "success": 72.5, "collision": 22.5, "nonconv": 9.0}, {"seed": 2, "success": 78.0, "collision": 17.5, "nonconv": 10.5}, {"seed": 3, "success": 74.5, "collision": 19.0, "nonconv": 12.5}], "iso_chart": [{"seed": 1, "success": 79.5, "collision": 20.5, "nonconv": 3.0}, {"seed": 2, "success": 61.0, "collision": 38.0, "nonconv": 6.0}, {"seed": 3, "success": 68.5, "collision": 26.5, "nonconv": 8.5}]}, "p": {"iso_metric": 0.6789, "iso_aniso": 0.2983}}, {"id": "Ashape3d_env4_tight_3d_exp2", "label": "Farthest", "models": {"metric": [{"seed": 1, "success": 55.0, "collision": 17.0, "nonconv": 43.0}, {"seed": 2, "success": 61.5, "collision": 24.5, "nonconv": 27.0}, {"seed": 3, "success": 61.0, "collision": 22.5, "nonconv": 33.0}], "aniso": [{"seed": 1, "success": 63.0, "collision": 28.0, "nonconv": 18.0}, {"seed": 2, "success": 74.5, "collision": 23.0, "nonconv": 7.5}, {"seed": 3, "success": 67.5, "collision": 26.5, "nonconv": 13.5}], "iso": [{"seed": 1, "success": 76.5, "collision": 20.0, "nonconv": 9.0}, {"seed": 2, "success": 74.5, "collision": 20.0, "nonconv": 11.0}, {"seed": 3, "success": 79.5, "collision": 14.5, "nonconv": 10.0}], "iso_orig": [{"seed": 1, "success": 69.0, "collision": 20.5, "nonconv": 19.0}, {"seed": 2, "success": 71.5, "collision": 20.0, "nonconv": 20.0}, {"seed": 3, "success": 61.5, "collision": 27.0, "nonconv": 27.0}], "iso_chart": [{"seed": 1, "success": 76.0, "collision": 22.0, "nonconv": 8.0}, {"seed": 2, "success": 60.0, "collision": 37.0, "nonconv": 12.0}, {"seed": 3, "success": 71.0, "collision": 22.5, "nonconv": 12.5}]}, "p": {"iso_metric": 0.0034, "iso_aniso": 0.1108}}, {"id": "Ashape3d_env4_tight_3d_exp3", "label": "Hard + far", "models": {"metric": [{"seed": 1, "success": 47.5, "collision": 24.0, "nonconv": 44.5}, {"seed": 2, "success": 61.0, "collision": 24.0, "nonconv": 27.5}, {"seed": 3, "success": 60.0, "collision": 21.5, "nonconv": 32.5}], "aniso": [{"seed": 1, "success": 61.0, "collision": 30.0, "nonconv": 19.0}, {"seed": 2, "success": 73.0, "collision": 24.0, "nonconv": 8.0}, {"seed": 3, "success": 67.5, "collision": 29.5, "nonconv": 13.0}], "iso": [{"seed": 1, "success": 73.0, "collision": 23.5, "nonconv": 10.0}, {"seed": 2, "success": 70.0, "collision": 22.5, "nonconv": 15.0}, {"seed": 3, "success": 71.5, "collision": 23.0, "nonconv": 11.0}], "iso_orig": [{"seed": 1, "success": 64.0, "collision": 23.5, "nonconv": 21.0}, {"seed": 2, "success": 67.5, "collision": 22.5, "nonconv": 21.0}, {"seed": 3, "success": 57.5, "collision": 27.5, "nonconv": 30.5}], "iso_chart": [{"seed": 1, "success": 74.5, "collision": 24.0, "nonconv": 8.0}, {"seed": 2, "success": 55.5, "collision": 42.5, "nonconv": 14.5}, {"seed": 3, "success": 70.0, "collision": 21.0, "nonconv": 13.0}]}, "p": {"iso_metric": 0.0665, "iso_aniso": 0.3374}}], "suite": {"metric": [66.62, 74.07, 71.64], "aniso": [72.15, 76.9, 76.1], "iso": [79.55, 78.29, 79.61], "iso_orig": [75.46, 77.73, 71.67], "iso_chart": [81.17, 66.23, 76.42]}, "suite_p": {"iso_metric": 0.0574, "iso_aniso": 0.0979}}]};
+const NAMES = { metric: 'metric_baseline', aniso: 'Lie anisotropic', iso: 'Lie isotropic', iso_orig: 'Lie isotropic · original net', iso_chart: 'Isotropic · chart gradient' };
+const MAIN = ['metric', 'aniso', 'iso'];
+const NS = 'http://www.w3.org/2000/svg';
+const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+const sd = a => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+const f1 = x => x.toFixed(1);
+const sgn = x => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1);
+const fp = p => p < 0.001 ? '<0.001' : p.toFixed(3);
+
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svgIn(id, w, h) {
+  const host = document.getElementById(id);
+  host.textContent = '';
+  return el('svg', { viewBox: `0 0 ${w} ${h}`, width: '100%', role: 'img' }, host);
+}
+const widthOf = id => Math.max(320, Math.min(940, document.getElementById(id).clientWidth || 640));
+
+// tooltip
+const tip = document.getElementById('tip');
+document.addEventListener('pointermove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (!t) { tip.hidden = true; return; }
+  tip.textContent = t.getAttribute('data-tip');
+  tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+});
+
+// findings
+(function findings() {
+  const E = Object.fromEntries(DATA.envs.map(e => [e.key, e]));
+  const m = (k, mod) => mean(E[k].suite[mod]);
+  const T = E.T.sets[0].models;
+  const items = [
+    ['Isotropic vs anisotropic', `Lie isotropic beats Lie anisotropic on all ${DATA.envs.reduce((s, e) => s + e.sets.length, 0)} sets: suite means ${f1(m('T','iso'))} vs ${f1(m('T','aniso'))} (T), ${f1(m('L','iso'))} vs ${f1(m('L','aniso'))} (L), ${f1(m('A','iso'))} vs ${f1(m('A','aniso'))} (A), with far smaller seed spread on T.`],
+    ['Against metric_baseline', `Ahead on L (${sgn(m('L','iso') - m('L','metric'))}) and A (${sgn(m('A','iso') - m('A','metric'))}), behind on T (${sgn(m('T','iso') - m('T','metric'))}). On T it trails on the standard, tight and rotation-heavy sets and leads on far and big-angle pairs.`],
+    ['Where the gain comes from', `On the original network the isotropic Lie loss scores ${f1(m('T','iso_orig'))} / ${f1(m('L','iso_orig'))} / ${f1(m('A','iso_orig'))}, close to metric_baseline's ${f1(m('T','metric'))} / ${f1(m('L','metric'))} / ${f1(m('A','metric'))}. Most of the lead over the baseline is the two-route network.`],
+  ];
+  const host = document.getElementById('findings');
+  for (const [k, t] of items) {
+    const d = document.createElement('div'); d.className = 'finding';
+    const a = document.createElement('div'); a.className = 'k'; a.textContent = k;
+    const p = document.createElement('p'); p.textContent = t;
+    d.append(a, p); host.appendChild(d);
+  }
+})();
+
+// vertical dot-and-whisker chart, groups = envs
+function groupChart(id, models, lo, hi) {
+  const W = widthOf(id), H = 300, L = 40, R = 8, Tm = 14, B = 34;
+  const svg = svgIn(id, W, H);
+  const y = v => Tm + (hi - v) / (hi - lo) * (H - Tm - B);
+  for (let v = lo; v <= hi; v += 10) {
+    el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: 'gridl' }, svg);
+    el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end' }, svg, v + '%');
+  }
+  const gw = (W - L - R) / DATA.envs.length;
+  DATA.envs.forEach((E, gi) => {
+    const gx = L + gi * gw;
+    el('text', { x: gx + gw / 2, y: H - 10, 'text-anchor': 'middle', class: 'grp' }, svg, `${E.name}`);
+    const step = Math.min(44, (gw - 20) / models.length);
+    models.forEach((mod, mi) => {
+      const v = E.suite[mod]; if (!v || !v.length) return;
+      const cx = gx + gw / 2 + (mi - (models.length - 1) / 2) * step;
+      const m = mean(v), s = sd(v);
+      const g = el('g', { 'data-tip': `${E.name} · ${NAMES[mod]}\nsuite mean ${f1(m)} ± ${f1(s)} (${v.length} seeds)\nseeds: ${v.map(f1).join(', ')}` }, svg);
+      el('line', { x1: cx, x2: cx, y1: y(m + s), y2: y(m - s), class: 'whisk c-' + mod }, g);
+      v.forEach((x, i) => el('circle', { cx: cx + (i - (v.length - 1) / 2) * 3.2, cy: y(x), r: 3.6, class: 'seed c-' + mod }, g));
+      el('rect', { x: cx - 9, y: y(m) - 1.75, width: 18, height: 3.5, rx: 1.5, class: 'c-' + mod, 'stroke-width': mod === 'iso_orig' ? 1.5 : 0 }, g);
+      el('rect', { x: cx - step / 2, y: Tm, width: step, height: H - Tm - B, fill: 'transparent' }, g);
+      el('text', { x: cx, y: y(Math.max(m + s, ...v)) - 8, 'text-anchor': 'middle', class: 'lab' }, g, f1(m));
+    });
+  });
+}
+
+// per-set strip panels
+function setPanels() {
+  const host = document.getElementById('set-panels');
+  host.textContent = '';
+  DATA.envs.forEach(E => {
+    const panel = document.createElement('div'); panel.className = 'panel';
+    const head = document.createElement('div'); head.className = 'panel-head';
+    const h = document.createElement('h3'); h.textContent = `${E.name} (${E.env})`;
+    const n = document.createElement('span'); n.className = 'note';
+    n.textContent = `${E.sets.length} sets · seeds ${MAIN.map(m => E.sets[0].models[m].length).join(' / ')}`;
+    head.append(h, n);
+    const c = document.createElement('div'); c.className = 'chart'; c.id = 'strip-' + E.key;
+    panel.append(head, c); host.appendChild(panel);
+    const W = widthOf(c.id), narrow = W < 560;
+    const L = narrow ? 104 : 140, R = narrow ? 58 : 82, rowH = 40, Tm = 6, B = 26;
+    const H = Tm + E.sets.length * rowH + B;
+    const svg = svgIn(c.id, W, H);
+    const lo = 20, hi = 100;
+    const x = v => L + (v - lo) / (hi - lo) * (W - L - R);
+    for (let v = lo; v <= hi; v += 20) {
+      el('line', { x1: x(v), x2: x(v), y1: Tm, y2: H - B, class: 'gridl' }, svg);
+      el('text', { x: x(v), y: H - 8, 'text-anchor': 'middle' }, svg, v + '%');
+    }
+    el('text', { x: W - 4, y: H - 8, 'text-anchor': 'end' }, svg, 'iso − metric');
+    E.sets.forEach((S, ri) => {
+      const cy = Tm + ri * rowH + rowH / 2;
+      if (ri % 2 === 0) el('rect', { x: 0, y: cy - rowH / 2, width: W, height: rowH, class: 'rowbg', 'fill-opacity': 0.55 }, svg);
+      el('text', { x: 6, y: cy + 4, class: 'lab' }, svg, S.label);
+      MAIN.forEach((mod, mi) => {
+        const rows = S.models[mod]; if (!rows.length) return;
+        const v = rows.map(r => r.success), m = mean(v);
+        const yy = cy + (mi - 1) * 10;
+        const g = el('g', { 'data-tip': `${S.label} · ${NAMES[mod]}\nsuccess ${f1(m)} ± ${f1(sd(v))}\ncollision ${f1(mean(rows.map(r => r.collision)))} · non-conv ${f1(mean(rows.map(r => r.nonconv)))}\nseeds: ${v.map(f1).join(', ')}` }, svg);
+        v.forEach(s => el('circle', { cx: x(s), cy: yy, r: 3.2, class: 'seed c-' + mod }, g));
+        el('line', { x1: x(Math.min(...v)), x2: x(Math.max(...v)), y1: yy, y2: yy, class: 'whisk c-' + mod, 'stroke-opacity': 0.45 }, g);
+        el('rect', { x: x(m) - 2, y: yy - 5, width: 4, height: 10, rx: 1, class: 'c-' + mod }, g);
+      });
+      const d = mean(S.models.iso.map(r => r.success)) - mean(S.models.metric.map(r => r.success));
+      const p = S.p.iso_metric, sig = p < 0.05;
+      el('text', { x: W - 6, y: cy + 4, 'text-anchor': 'end', class: (sig ? 'sig ' : '') + (sig ? (d > 0 ? 'delta-pos' : 'delta-neg') : 'delta-ns'),
+                   'data-tip': `Lie isotropic − metric_baseline: ${sgn(d)} pts, Welch p = ${fp(p)}` }, svg, sgn(d) + (sig ? '*' : ''));
+    });
+  });
+}
+
+// failure modes: horizontal bars from 0
+function failChart() {
+  const id = 'fail-chart', W = widthOf(id), narrow = W < 560;
+  const metrics = [['collision', 'Collision'], ['nonconv', 'Not converged']];
+  const L = narrow ? 76 : 96, R = 44, barH = 9, gap = 3, block = MAIN.length * (barH + gap) + 18;
+  const colW = narrow ? (W - L) : (W - L) / 2;
+  const H = (narrow ? 2 : 1) * (DATA.envs.length * block + 28) + 6;
+  const svg = svgIn(id, W, H);
+  const hi = 45;
+  metrics.forEach(([key, label], ki) => {
+    const ox = narrow ? L : L + ki * colW, oy = narrow ? ki * (DATA.envs.length * block + 28) : 0;
+    const w = colW - R - 12;
+    const x = v => ox + v / hi * w;
+    el('text', { x: ox, y: oy + 14, class: 'lab', 'font-weight': 600 }, svg, label + ' %');
+    for (let v = 0; v <= 40; v += 10) {
+      el('line', { x1: x(v), x2: x(v), y1: oy + 22, y2: oy + 22 + DATA.envs.length * block, class: 'gridl' }, svg);
+      el('text', { x: x(v), y: oy + 22 + DATA.envs.length * block + 14, 'text-anchor': 'middle' }, svg, v);
+    }
+    DATA.envs.forEach((E, ei) => {
+      const by = oy + 26 + ei * block;
+      if (ki === 0 || narrow) el('text', { x: 6, y: by + (MAIN.length * (barH + gap)) / 2 + 3, class: 'lab' }, svg, E.name);
+      MAIN.forEach((mod, mi) => {
+        const all = E.sets.flatMap(S => S.models[mod].map(r => r[key]));
+        const m = mean(all), yy = by + mi * (barH + gap);
+        const g = el('g', { 'data-tip': `${E.name} · ${NAMES[mod]}\n${label.toLowerCase()} ${f1(m)}% (mean of ${all.length} set×seed runs)` }, svg);
+        el('rect', { x: x(0), y: yy, width: Math.max(1, x(m) - x(0)), height: barH, rx: 1.5, class: 'c-' + mod, 'stroke-width': 0 }, g);
+        el('text', { x: x(m) + 5, y: yy + barH - 1 }, g, f1(m));
+      });
+    });
+  });
+}
+
+// tables
+function tables() {
+  const host = document.getElementById('full-tables');
+  host.textContent = '';
+  DATA.envs.forEach(E => {
+    const h = document.createElement('h3'); h.textContent = `${E.name} (${E.env})`;
+    const wrap = document.createElement('div'); wrap.className = 'tbl-wrap';
+    const t = document.createElement('table');
+    const head = t.createTHead().insertRow();
+    ['Set', 'metric_baseline', 'Lie anisotropic', 'Lie isotropic', 'iso − metric', 'iso − aniso'].forEach(s => { const th = document.createElement('th'); th.textContent = s; head.appendChild(th); });
+    const body = t.createTBody();
+    const addRow = (label, vals, ps, cls) => {
+      const tr = body.insertRow(); if (cls) tr.className = cls;
+      tr.insertCell().textContent = label;
+      const means = vals.map(v => v.s.length ? mean(v.s) : -1), best = Math.max(...means);
+      vals.forEach((v, i) => {
+        const td = tr.insertCell(); td.className = 'num' + (means[i] === best ? ' best' : '');
+        td.append(document.createTextNode(`${f1(mean(v.s))} ± ${f1(sd(v.s))}`));
+        if (v.c) { const s = document.createElement('div'); s.className = 'co'; s.textContent = `coll ${f1(v.c)}`; td.appendChild(s); }
+      });
+      [[2, 0, ps[0]], [2, 1, ps[1]]].forEach(([a, b, p]) => {
+        const d = means[a] - means[b], td = tr.insertCell();
+        td.className = 'num' + (p < 0.05 ? (d > 0 ? ' sig-pos' : ' sig-neg') : '');
+        td.textContent = `${sgn(d)} (p ${fp(p)})`;
+      });
+    };
+    E.sets.forEach(S => addRow(S.label, MAIN.map(m => ({ s: S.models[m].map(r => r.success), c: mean(S.models[m].map(r => r.collision)) })), [S.p.iso_metric, S.p.iso_aniso]));
+    addRow('Suite mean', MAIN.map(m => ({ s: E.suite[m] })), [E.suite_p.iso_metric, E.suite_p.iso_aniso], 'suite');
+    wrap.appendChild(t);
+    const box = document.createElement('div'); box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.gap = '8px'; box.style.minWidth = '0';
+    box.append(h, wrap); host.appendChild(box);
+  });
+}
+
+function drawAll() {
+  groupChart('suite-chart', MAIN, 30, 90);
+  setPanels();
+  failChart();
+  groupChart('ctrl-chart', ['metric', 'iso_orig', 'iso', 'iso_chart'], 30, 90);
+}
+drawAll();
+tables();
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 120); });
+</script>
+
+</body></html>
